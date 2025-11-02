@@ -1,7 +1,5 @@
-package eu.hhmmss.app.uploadingfiles;
+package eu.hhmmss.app.uploadingfiles.storage;
 
-import eu.hhmmss.app.uploadingfiles.storage.FileSystemStorageService;
-import eu.hhmmss.app.uploadingfiles.storage.StorageFileNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -13,34 +11,32 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.io.IOException;
-import java.util.stream.Collectors;
-
 @Controller
 @RequiredArgsConstructor
-public class FileUploadController {
+public class UploadController {
 
-    private final FileSystemStorageService storageService;
+    private final UploadService uploadService;
 
     @GetMapping("/")
-    public String listUploadedFiles(Model model) throws IOException {
+    public String listUploadedFiles(Model model) {
 
-        model.addAttribute("files", storageService.loadAll().map(
-                        path -> MvcUriComponentsBuilder.fromMethodName(FileUploadController.class,
-                                "serveFile", path.getFileName().toString()).build().toUri().toString())
-                .collect(Collectors.toList()));
+        model.addAttribute("files", uploadService.loadAll()
+                .map(path -> MvcUriComponentsBuilder.fromMethodName(
+                                UploadController.class, "serveFile",
+                                path.getFileName().toString())
+                        .build().toUri().toString())
+                .toList());
 
-        return "uploadForm";
+        return "upload";
     }
 
     @GetMapping("/files/{filename:.+}")
     @ResponseBody
     public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
 
-        Resource file = storageService.loadAsResource(filename);
+        Resource file = uploadService.loadAsResource(filename);
 
-        if (file == null)
-            return ResponseEntity.notFound().build();
+        if (file == null) return ResponseEntity.notFound().build();
 
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
                 "attachment; filename=\"" + file.getFilename() + "\"").body(file);
@@ -50,9 +46,9 @@ public class FileUploadController {
     public String handleFileUpload(@RequestParam("file") MultipartFile file,
                                    RedirectAttributes redirectAttributes) {
 
-        storageService.store(file);
-        redirectAttributes.addFlashAttribute("message",
-                "You successfully uploaded " + file.getOriginalFilename() + "!");
+        String uuidFilename = uploadService.store(file);
+        redirectAttributes.addFlashAttribute("originalFilename", file.getOriginalFilename());
+        redirectAttributes.addFlashAttribute("uuidFilename", uuidFilename);
 
         return "redirect:/";
     }

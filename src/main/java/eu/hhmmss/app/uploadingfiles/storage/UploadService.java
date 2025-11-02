@@ -1,16 +1,12 @@
 package eu.hhmmss.app.uploadingfiles.storage;
 
-import lombok.RequiredArgsConstructor;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.FileSystemUtils;
 import org.springframework.web.multipart.MultipartFile;
-
-import jakarta.annotation.PostConstruct;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,57 +15,62 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
-public class FileSystemStorageService {
-
-    @Value("${storage.location}")
-	private String storageLocation;
+public class UploadService {
 
     private Path rootLocation;
 
-	@PostConstruct
-	public void initialize() {
-        if(storageLocation == null || storageLocation.trim().isEmpty()){
-            throw new StorageException("File upload location can not be Empty.");
+    @PostConstruct
+    public void initialize() {
+        String tempDir = System.getProperty("java.io.tmpdir");
+        this.rootLocation = Paths.get(tempDir, "uploads");
+        log.info("Using temporary upload location: {}", rootLocation.toAbsolutePath());
+
+        try {
+            Files.createDirectories(rootLocation);
+            log.info("Temporary upload directory created/verified: {}", rootLocation.toAbsolutePath());
+        } catch (IOException e) {
+            throw new StorageException("Could not initialize temporary storage", e);
         }
+    }
 
-        this.rootLocation = Paths.get(storageLocation);
-        log.info("Using upload location: {}", rootLocation.toAbsolutePath());
-	}
-
-
-    public void store(MultipartFile file) {
+    public String store(MultipartFile file) {
         try {
             if (file.isEmpty()) {
                 throw new StorageException("Failed to store empty file.");
             }
-            Path destinationFile = this.rootLocation.resolve(
-                            Paths.get(file.getOriginalFilename()))
+
+            // Generate UUID filename while preserving extension
+            String originalFilename = Objects.requireNonNull(file.getOriginalFilename());
+            String fileExtension = "";
+            int lastDotIndex = originalFilename.lastIndexOf('.');
+            if (lastDotIndex > 0) {
+                fileExtension = originalFilename.substring(lastDotIndex);
+            }
+            String uuidFilename = UUID.randomUUID() + fileExtension;
+
+            Path destinationFile = this.rootLocation.resolve(Paths.get(uuidFilename))
                     .normalize().toAbsolutePath();
             if (!destinationFile.getParent().equals(this.rootLocation.toAbsolutePath())) {
                 // This is a security check
                 throw new StorageException("Cannot store file outside current directory.");
             }
             try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, destinationFile,
-                        StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
+                log.info("File '{}' uploaded successfully as: {}", originalFilename, destinationFile.toAbsolutePath());
             }
+            return uuidFilename;
         } catch (IOException e) {
             throw new StorageException("Failed to store file.", e);
         }
     }
 
     public Stream<Path> loadAll() {
-        if (rootLocation == null) {
-            rootLocation = Paths.get("c:\\tmp\\");
-            log.info("Using upload location: {}", rootLocation.toAbsolutePath());
-        }
-
-
         try {
             return Files.walk(this.rootLocation, 1)
                     .filter(path -> !path.equals(this.rootLocation))
@@ -77,7 +78,6 @@ public class FileSystemStorageService {
         } catch (IOException e) {
             throw new StorageException("Failed to read stored files", e);
         }
-
     }
 
     public Path load(String filename) {
@@ -93,7 +93,6 @@ public class FileSystemStorageService {
             } else {
                 throw new StorageFileNotFoundException(
                         "Could not read file: " + filename);
-
             }
         } catch (MalformedURLException e) {
             throw new StorageFileNotFoundException("Could not read file: " + filename, e);
