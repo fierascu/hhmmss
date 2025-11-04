@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class DocServiceTest {
 
     @Test
-    void testAddDataToDocs() {
+    void testAddDataToDocs() throws Exception {
         Path xlsxFilePath = Path.of("src/test/resources/timesheet-in.xlsx");
         HhmmssDto hhmmssXlsxFormat = XlsService.readTimesheet(xlsxFilePath);
         assertNotNull(hhmmssXlsxFormat);
