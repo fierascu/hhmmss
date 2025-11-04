@@ -31,7 +31,7 @@ public class XlsService {
      * @throws IOException           if file is missing or not readable
      * @throws IllegalStateException if the expected sheet/headers are not found
      */
-    public static HhmmssDto readTimesheet(Path xlsxPath) {
+    public static HhmmssDto readTimesheet(Path xlsxPath) throws IOException {
         HhmmssDto hhmmssDto = new HhmmssDto();
         Map<String, String> meta = hhmmssDto.getMeta();
 
@@ -76,13 +76,16 @@ public class XlsService {
                 Double colD = getCellNumeric(row.getCell(3));
                 hhmmssDto.getTasks().put(day, new ImmutablePair<>(colC, colD));
             }
+
+            log.info("xlsxFormat: {}", hhmmssDto);
         } catch (FileNotFoundException e) {
             log.error("File not found: {}", xlsxPath, e);
+            throw e;
         } catch (IOException e) {
             log.error("Error reading file: {}", xlsxPath, e);
+            throw e;
         }
 
-        log.info("xlsxFormat: {}", hhmmssDto);
         return hhmmssDto;
     }
 
