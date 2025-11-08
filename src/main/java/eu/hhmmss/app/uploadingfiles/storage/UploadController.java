@@ -18,11 +18,7 @@ public class UploadController {
     private final UploadService uploadService;
 
     @GetMapping("/")
-    public String listUploadedFiles(Model model, @RequestParam(required = false) String error) {
-        // Check if there's an error parameter
-        if ("upload_failed".equals(error)) {
-            model.addAttribute("errorMessage", "File size exceeds the maximum limit of 128KB.");
-        }
+    public String listUploadedFiles(Model model) {
 
         model.addAttribute("files", uploadService.loadAll()
                 .map(path -> MvcUriComponentsBuilder.fromMethodName(
