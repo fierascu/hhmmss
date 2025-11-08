@@ -1,5 +1,6 @@
 package eu.hhmmss.app.uploadingfiles.storage;
 
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -18,7 +19,13 @@ public class UploadController {
     private final UploadService uploadService;
 
     @GetMapping("/")
-    public String listUploadedFiles(Model model) {
+    public String listUploadedFiles(Model model, HttpSession session) {
+        // Check for upload error in session
+        String uploadError = (String) session.getAttribute("uploadError");
+        if (uploadError != null) {
+            model.addAttribute("errorMessage", uploadError);
+            session.removeAttribute("uploadError");
+        }
 
         model.addAttribute("files", uploadService.loadAll()
                 .map(path -> MvcUriComponentsBuilder.fromMethodName(
@@ -45,10 +52,15 @@ public class UploadController {
     @PostMapping("/")
     public String handleFileUpload(@RequestParam("file") MultipartFile file,
                                    RedirectAttributes redirectAttributes) {
-
-        String uuidFilename = uploadService.store(file);
-        redirectAttributes.addFlashAttribute("originalFilename", file.getOriginalFilename());
-        redirectAttributes.addFlashAttribute("uuidFilename", uuidFilename);
+        try {
+            String uuidFilename = uploadService.store(file);
+            redirectAttributes.addFlashAttribute("originalFilename", file.getOriginalFilename());
+            redirectAttributes.addFlashAttribute("uuidFilename", uuidFilename);
+        } catch (StorageException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "An unexpected error occurred: " + e.getMessage());
+        }
 
         return "redirect:/";
     }
