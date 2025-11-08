@@ -1,5 +1,6 @@
 package eu.hhmmss.app.uploadingfiles.storage;
 
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -18,7 +19,13 @@ public class UploadController {
     private final UploadService uploadService;
 
     @GetMapping("/")
-    public String listUploadedFiles(Model model) {
+    public String listUploadedFiles(Model model, HttpSession session) {
+        // Check for error message from session (set by CustomErrorController)
+        String errorMessage = (String) session.getAttribute("errorMessage");
+        if (errorMessage != null) {
+            model.addAttribute("errorMessage", errorMessage);
+            session.removeAttribute("errorMessage");
+        }
 
         model.addAttribute("files", uploadService.loadAll()
                 .map(path -> MvcUriComponentsBuilder.fromMethodName(
