@@ -13,11 +13,17 @@
 <div>
     <form action="/" enctype="multipart/form-data" method="POST">
         <div>
-            File to upload: <input name="file" type="file" style="width: 6a00px;"/> <input type="submit"
-                                                                                           value="Upload"/>
+            File to upload: <input id="fileInput" name="file" type="file" style="width: 6a00px;"/> <input id="uploadButton" type="submit"
+                                                                                           value="Upload" disabled/>
         </div>
     </form>
 </div>
+<script>
+    document.getElementById('fileInput').addEventListener('change', function() {
+        var uploadButton = document.getElementById('uploadButton');
+        uploadButton.disabled = !this.files.length;
+    });
+</script>
 <div>
     <ul>
         <li th:each="file : ${files}">
