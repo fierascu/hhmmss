@@ -1,5 +1,6 @@
 package eu.hhmmss.app.uploadingfiles.storage;
 
+import eu.hhmmss.app.util.FileTypeValidator;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
@@ -47,6 +48,14 @@ public class UploadService {
 
             // Generate UUID filename while preserving extension
             String originalFilename = Objects.requireNonNull(file.getOriginalFilename());
+
+            // Validate file content matches Excel extension (security check)
+            try (InputStream validationStream = file.getInputStream()) {
+                FileTypeValidator.validateExcelFile(validationStream, originalFilename);
+            } catch (IllegalArgumentException e) {
+                throw new StorageException(e.getMessage());
+            }
+
             String fileExtension = "";
             int lastDotIndex = originalFilename.lastIndexOf('.');
             if (lastDotIndex > 0) {
