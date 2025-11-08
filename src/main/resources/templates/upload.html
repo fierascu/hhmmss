@@ -21,7 +21,21 @@
 <script>
     document.getElementById('fileInput').addEventListener('change', function() {
         var uploadButton = document.getElementById('uploadButton');
-        uploadButton.disabled = !this.files.length;
+        var file = this.files[0];
+
+        if (!file) {
+            uploadButton.disabled = true;
+            return;
+        }
+
+        // Check if the file has an Excel extension
+        var fileName = file.name.toLowerCase();
+        var isExcelFile = fileName.endsWith('.xls') ||
+                         fileName.endsWith('.xlsx') ||
+                         fileName.endsWith('.xlsm') ||
+                         fileName.endsWith('.xlsb');
+
+        uploadButton.disabled = !isExcelFile;
     });
 </script>
 <div>
