@@ -1,0 +1,29 @@
+<html xmlns:th="https://www.thymeleaf.org">
+
+<head>
+    <title>Upload</title>
+</head>
+<body>
+
+<div th:if="${message}">
+    <p th:if="${uuidFilename}">Uploaded file <strong th:text="${originalFilename}"></strong> to <strong th:text="${uuidFilename}"></strong>
+    </p>
+</div>
+
+<div>
+    <form action="/" enctype="multipart/form-data" method="POST">
+        <div>
+            File to upload: <input name="file" type="file" style="width: 6a00px;"/> <input type="submit"
+                                                                                           value="Upload"/>
+        </div>
+    </form>
+</div>
+<div>
+    <ul>
+        <li th:each="file : ${files}">
+            <a th:href="${file}" th:text="${file}"/>
+        </li>
+    </ul>
+</div>
+</body>
+</html>
