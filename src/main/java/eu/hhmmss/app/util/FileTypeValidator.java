@@ -40,9 +40,7 @@ public class FileTypeValidator {
 
         // Read enough bytes to check various file signatures
         byte[] header = new byte[8];
-        inputStream.mark(8); // Mark position to reset after reading
         int bytesRead = inputStream.read(header);
-        inputStream.reset(); // Reset stream for later use
 
         if (bytesRead < 2) {
             throw new IllegalArgumentException("File is too small to be a valid Excel file");
