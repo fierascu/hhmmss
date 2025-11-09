@@ -126,6 +126,15 @@
 							<artifactId>lombok</artifactId>
 						</exclude>
 					</excludes>
+					<!-- JVM arguments needed for Spire libraries to access Java internal APIs in Java 21 -->
+					<jvmArguments>
+						--add-opens java.base/sun.security.action=ALL-UNNAMED
+						--add-opens java.base/java.util=ALL-UNNAMED
+						--add-opens java.base/java.lang=ALL-UNNAMED
+						--add-opens java.base/java.io=ALL-UNNAMED
+						--add-opens java.base/sun.reflect=ALL-UNNAMED
+						--add-opens java.base/sun.nio.ch=ALL-UNNAMED
+					</jvmArguments>
 				</configuration>
 			</plugin>
 		</plugins>
