@@ -10,13 +10,14 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.containsString;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -60,7 +61,11 @@ class UploadControllerTest {
     }
 
     @Test
-    void testHandleFileUploadSuccess() throws Exception {
+    void testHandleFileUploadWithInvalidContent() throws Exception {
+        // Note: The controller now attempts to parse the uploaded XLS and generate DOCX.
+        // Invalid XLS content that doesn't exist as a file will cause XlsService.readTimesheet()
+        // to return an empty DTO (0 tasks), and DocService will successfully generate a DOCX.
+        // This test has been renamed to clarify it tests invalid content handling.
         byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -70,15 +75,58 @@ class UploadControllerTest {
         );
 
         when(uploadService.store(any())).thenReturn("uuid-12345.xlsx");
+        // Return a non-existent path - XlsService will catch the error and return empty DTO
+        when(uploadService.load("uuid-12345.xlsx")).thenReturn(Paths.get("/tmp/nonexistent-uuid-12345.xlsx"));
+        when(uploadService.load(argThat(filename ->
+                filename != null && filename.startsWith("timesheet_") && filename.endsWith(".docx"))))
+                .thenAnswer(invocation -> {
+                    String filename = invocation.getArgument(0);
+                    return Paths.get("/tmp/uploads/" + filename);
+                });
 
+        // XlsService returns empty DTO with 0 tasks, but processing succeeds
         mockMvc.perform(multipart("/")
                         .file(file))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attributeExists("successMessage"))
+                .andExpect(flash().attribute("successMessage", "File processed successfully! Extracted 0 tasks."));
+
+        verify(uploadService).store(file);
+    }
+
+    @Test
+    void testHandleFileUploadWithValidXlsFile() throws Exception {
+        // Load the real test XLS file
+        Path testXlsPath = Paths.get("src/test/resources/timesheet-in.xlsx");
+        byte[] xlsxContent = Files.readAllBytes(testXlsPath);
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "timesheet-in.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        when(uploadService.store(any())).thenReturn("uuid-12345.xlsx");
+        when(uploadService.load("uuid-12345.xlsx")).thenReturn(testXlsPath);
+        when(uploadService.load(argThat(filename ->
+                filename != null && filename.startsWith("timesheet_") && filename.endsWith(".docx"))))
+                .thenAnswer(invocation -> {
+                    String filename = invocation.getArgument(0);
+                    return Paths.get("/tmp/uploads/" + filename);
+                });
+
+        // The controller should successfully process the file and generate DOCX
+        mockMvc.perform(multipart("/")
+                        .file(file))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attributeExists("successMessage"))
                 .andExpect(flash().attributeExists("originalFilename"))
                 .andExpect(flash().attributeExists("uuidFilename"))
-                .andExpect(flash().attribute("originalFilename", "test.xlsx"))
-                .andExpect(flash().attribute("uuidFilename", "uuid-12345.xlsx"));
+                .andExpect(flash().attributeExists("extractedFilename"))
+                .andExpect(flash().attribute("originalFilename", "timesheet-in.xlsx"));
 
         verify(uploadService).store(file);
     }

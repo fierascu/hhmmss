@@ -131,11 +131,11 @@ class XlsServiceTest {
             }
         }
 
-        // Should not throw, but return empty result
-        HhmmssDto result = XlsService.readTimesheet(testFile);
+        // The method throws IllegalStateException when "Timesheet" sheet is not found
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> XlsService.readTimesheet(testFile));
 
-        assertNotNull(result);
-        // The method logs error but returns a DTO with empty data
+        assertTrue(exception.getMessage().contains("Sheet 'Timesheet' not found"));
     }
 
     @Test

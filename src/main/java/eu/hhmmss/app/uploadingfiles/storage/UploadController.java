@@ -1,7 +1,12 @@
 package eu.hhmmss.app.uploadingfiles.storage;
 
+import eu.hhmmss.app.converter.DocService;
+import eu.hhmmss.app.converter.HhmmssDto;
+import eu.hhmmss.app.converter.XlsService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -12,8 +17,14 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.UUID;
+
 @Controller
 @RequiredArgsConstructor
+@Slf4j
 public class UploadController {
 
     private final UploadService uploadService;
@@ -53,12 +64,51 @@ public class UploadController {
     public String handleFileUpload(@RequestParam("file") MultipartFile file,
                                    RedirectAttributes redirectAttributes) {
         try {
+            // Step 1: Store the uploaded file
             String uuidFilename = uploadService.store(file);
+            log.info("Stored uploaded file as: {}", uuidFilename);
+
+            // Step 2: Parse the uploaded XLS file
+            Path uploadedFilePath = uploadService.load(uuidFilename);
+            HhmmssDto extractedData = XlsService.readTimesheet(uploadedFilePath);
+            log.info("Extracted data from uploaded file: {} tasks, {} meta fields",
+                    extractedData.getTasks().size(),
+                    extractedData.getMeta().size());
+
+            // Step 3: Generate DOCX with extracted data
+            String extractedFilename = "timesheet_" + UUID.randomUUID() + ".docx";
+            Path extractedFilePath = uploadService.load(extractedFilename);
+
+            // Copy template to temporary location
+            Resource templateResource = new ClassPathResource("timesheet-template.docx");
+            Path tempTemplate = Files.createTempFile("template-", ".docx");
+            Files.copy(templateResource.getInputStream(), tempTemplate, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            // Generate DOCX from template
+            DocService.addDataToDocs(tempTemplate, extractedData, extractedFilePath);
+            log.info("Generated timesheet DOCX file as: {}", extractedFilename);
+
+            // Clean up temp template
+            Files.deleteIfExists(tempTemplate);
+
+            // Pass both filenames to the view
             redirectAttributes.addFlashAttribute("originalFilename", file.getOriginalFilename());
             redirectAttributes.addFlashAttribute("uuidFilename", uuidFilename);
+            redirectAttributes.addFlashAttribute("extractedFilename", extractedFilename);
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "File processed successfully! Extracted " + extractedData.getTasks().size() + " tasks.");
+
         } catch (StorageException e) {
+            log.error("Storage error during file upload", e);
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        } catch (IllegalStateException e) {
+            log.error("Invalid file format", e);
+            redirectAttributes.addFlashAttribute("errorMessage", "Invalid file format: " + e.getMessage());
+        } catch (IOException e) {
+            log.error("Error processing template", e);
+            redirectAttributes.addFlashAttribute("errorMessage", "Error processing template: " + e.getMessage());
         } catch (Exception e) {
+            log.error("Unexpected error during file processing", e);
             redirectAttributes.addFlashAttribute("errorMessage", "An unexpected error occurred: " + e.getMessage());
         }
 
