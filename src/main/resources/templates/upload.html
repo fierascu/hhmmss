@@ -32,10 +32,23 @@
         </div>
 
         <div style="margin-top: 1rem;">
-            <a th:href="@{'/files/' + ${extractedFilename}}" class="btn btn-success">
-                <span th:if="${isZipResult}">📦 Download All Timesheets (ZIP)</span>
-                <span th:if="${!isZipResult}">📥 Download Timesheet (DOCX)</span>
+            <!-- ZIP result: Single download button -->
+            <a th:if="${isZipResult}" th:href="@{'/files/' + ${extractedFilename}}" class="btn btn-success">
+                📦 Download All Timesheets (ZIP)
             </a>
+
+            <!-- Single file result: Multiple download buttons for DOCX and PDFs -->
+            <div th:if="${!isZipResult}">
+                <a th:href="@{'/files/' + ${extractedFilename}}" class="btn btn-success">
+                    📥 Download Timesheet (DOCX)
+                </a>
+                <a th:if="${docPdfFilename}" th:href="@{'/files/' + ${docPdfFilename}}" class="btn btn-primary" style="margin-left: 0.5rem;">
+                    📄 Download Timesheet (PDF)
+                </a>
+                <a th:if="${xlsPdfFilename}" th:href="@{'/files/' + ${xlsPdfFilename}}" class="btn btn-secondary" style="margin-left: 0.5rem;">
+                    📊 Download Input Excel (PDF)
+                </a>
+            </div>
         </div>
     </div>
 
