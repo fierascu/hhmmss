@@ -1,7 +1,6 @@
 package eu.hhmmss.app.uploadingfiles.storage;
 
 import eu.hhmmss.app.converter.HhmmssDto;
-import eu.hhmmss.app.converter.XlsGeneratorService;
 import eu.hhmmss.app.converter.XlsService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +24,6 @@ import java.util.UUID;
 public class UploadController {
 
     private final UploadService uploadService;
-    private final XlsGeneratorService xlsGeneratorService;
 
     @GetMapping("/")
     public String listUploadedFiles(Model model, HttpSession session) {
@@ -76,7 +74,7 @@ public class UploadController {
             // Step 3: Generate new XLS with extracted data
             String extractedFilename = "extracted_" + UUID.randomUUID() + ".xlsx";
             Path extractedFilePath = uploadService.load(extractedFilename);
-            xlsGeneratorService.generateExtractedDataXls(extractedData, extractedFilePath);
+            XlsService.writeExtractedData(extractedData, extractedFilePath);
             log.info("Generated extracted data file as: {}", extractedFilename);
 
             // Pass both filenames to the view
