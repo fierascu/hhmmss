@@ -1,10 +1,12 @@
 package eu.hhmmss.app.uploadingfiles.storage;
 
+import eu.hhmmss.app.converter.DocService;
 import eu.hhmmss.app.converter.HhmmssDto;
 import eu.hhmmss.app.converter.XlsService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
 
@@ -71,11 +75,21 @@ public class UploadController {
                     extractedData.getTasks().size(),
                     extractedData.getMeta().size());
 
-            // Step 3: Generate new XLS with extracted data
-            String extractedFilename = "extracted_" + UUID.randomUUID() + ".xlsx";
+            // Step 3: Generate DOCX with extracted data
+            String extractedFilename = "timesheet_" + UUID.randomUUID() + ".docx";
             Path extractedFilePath = uploadService.load(extractedFilename);
-            XlsService.writeExtractedData(extractedData, extractedFilePath);
-            log.info("Generated extracted data file as: {}", extractedFilename);
+
+            // Copy template to temporary location
+            Resource templateResource = new ClassPathResource("timesheet-template.docx");
+            Path tempTemplate = Files.createTempFile("template-", ".docx");
+            Files.copy(templateResource.getInputStream(), tempTemplate, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            // Generate DOCX from template
+            DocService.addDataToDocs(tempTemplate, extractedData, extractedFilePath);
+            log.info("Generated timesheet DOCX file as: {}", extractedFilename);
+
+            // Clean up temp template
+            Files.deleteIfExists(tempTemplate);
 
             // Pass both filenames to the view
             redirectAttributes.addFlashAttribute("originalFilename", file.getOriginalFilename());
@@ -90,6 +104,9 @@ public class UploadController {
         } catch (IllegalStateException e) {
             log.error("Invalid file format", e);
             redirectAttributes.addFlashAttribute("errorMessage", "Invalid file format: " + e.getMessage());
+        } catch (IOException e) {
+            log.error("Error processing template", e);
+            redirectAttributes.addFlashAttribute("errorMessage", "Error processing template: " + e.getMessage());
         } catch (Exception e) {
             log.error("Unexpected error during file processing", e);
             redirectAttributes.addFlashAttribute("errorMessage", "An unexpected error occurred: " + e.getMessage());
