@@ -263,9 +263,15 @@ class UploadServiceTest {
 
     @Test
     void testInit() throws IOException {
-        // Test the init method (separate from initialize)
+        // Test the init method (requires initialize to be called first to set rootLocation)
         UploadService service = new UploadService();
+        service.initialize(); // Must call initialize first to set rootLocation
 
         assertDoesNotThrow(() -> service.init());
+
+        // Verify the directory was created
+        String tempDir = System.getProperty("java.io.tmpdir");
+        Path expectedPath = Paths.get(tempDir, "uploads");
+        assertTrue(Files.exists(expectedPath));
     }
 }
