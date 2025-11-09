@@ -2,6 +2,7 @@ package eu.hhmmss.app.uploadingfiles.storage;
 
 import eu.hhmmss.app.converter.DocService;
 import eu.hhmmss.app.converter.HhmmssDto;
+import eu.hhmmss.app.converter.PdfService;
 import eu.hhmmss.app.converter.XlsService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ import java.util.UUID;
 public class UploadController {
 
     private final UploadService uploadService;
+    private final PdfService pdfService;
 
     @GetMapping("/")
     public String listUploadedFiles(Model model, HttpSession session) {
@@ -91,12 +93,26 @@ public class UploadController {
             // Clean up temp template
             Files.deleteIfExists(tempTemplate);
 
-            // Pass both filenames to the view
+            // Step 4: Generate PDF from input XLS (1:1 print)
+            String xlsPdfFilename = "input_" + UUID.randomUUID() + ".pdf";
+            Path xlsPdfPath = uploadService.load(xlsPdfFilename);
+            pdfService.convertXlsToPdf(uploadedFilePath, xlsPdfPath);
+            log.info("Generated PDF from input XLS as: {}", xlsPdfFilename);
+
+            // Step 5: Generate PDF from output DOC (1:1 print)
+            String docPdfFilename = "output_" + UUID.randomUUID() + ".pdf";
+            Path docPdfPath = uploadService.load(docPdfFilename);
+            pdfService.convertDocToPdf(extractedFilePath, docPdfPath);
+            log.info("Generated PDF from output DOC as: {}", docPdfFilename);
+
+            // Pass all filenames to the view
             redirectAttributes.addFlashAttribute("originalFilename", file.getOriginalFilename());
             redirectAttributes.addFlashAttribute("uuidFilename", uuidFilename);
             redirectAttributes.addFlashAttribute("extractedFilename", extractedFilename);
+            redirectAttributes.addFlashAttribute("xlsPdfFilename", xlsPdfFilename);
+            redirectAttributes.addFlashAttribute("docPdfFilename", docPdfFilename);
             redirectAttributes.addFlashAttribute("successMessage",
-                    "File processed successfully! Extracted " + extractedData.getTasks().size() + " tasks.");
+                    "File processed successfully! Extracted " + extractedData.getTasks().size() + " tasks and generated PDFs.");
 
         } catch (StorageException e) {
             log.error("Storage error during file upload", e);

@@ -19,8 +19,16 @@
     </p>
     <p style="margin: 10px 0 0 0;">
         <a th:href="@{'/files/' + ${extractedFilename}}"
-           style="display: inline-block; padding: 8px 16px; background-color: #4caf50; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+           style="display: inline-block; padding: 8px 16px; background-color: #4caf50; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; margin-right: 10px;">
             Download Timesheet (DOCX)
+        </a>
+        <a th:href="@{'/files/' + ${docPdfFilename}}"
+           style="display: inline-block; padding: 8px 16px; background-color: #2196f3; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; margin-right: 10px;">
+            Download Timesheet (PDF)
+        </a>
+        <a th:href="@{'/files/' + ${xlsPdfFilename}}"
+           style="display: inline-block; padding: 8px 16px; background-color: #ff9800; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+            Download Input Excel (PDF)
         </a>
     </p>
 </div>
