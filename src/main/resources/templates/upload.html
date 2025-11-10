@@ -5,13 +5,13 @@
 <th:block th:fragment="content">
     <!-- Error Message -->
     <div th:if="${errorMessage}" class="alert alert-error">
-        <strong>❌ Error</strong>
+        <strong>[ERROR]</strong>
         <span th:text="${errorMessage}"></span>
     </div>
 
     <!-- Success Message -->
     <div th:if="${successMessage}" class="alert alert-success">
-        <strong>✅ Success</strong>
+        <strong>[OK]</strong>
         <span th:text="${successMessage}"></span>
 
         <!-- Show processed files list for ZIP batch processing -->
@@ -34,19 +34,19 @@
         <div style="margin-top: 1rem;">
             <!-- ZIP result: Single download button -->
             <a th:if="${isZipResult}" th:href="@{'/files/' + ${extractedFilename}}" class="btn btn-success">
-                📦 Download All Timesheets (ZIP)
+                Download All Timesheets (ZIP)
             </a>
 
             <!-- Single file result: Multiple download buttons for DOCX and PDFs -->
             <div th:if="${!isZipResult}">
                 <a th:href="@{'/files/' + ${extractedFilename}}" class="btn btn-success">
-                    📥 Download Timesheet (DOCX)
+                    Download Timesheet (DOCX)
                 </a>
                 <a th:if="${docPdfFilename}" th:href="@{'/files/' + ${docPdfFilename}}" class="btn btn-primary" style="margin-left: 0.5rem;">
-                    📄 Download Timesheet (PDF)
+                    Download Timesheet (PDF)
                 </a>
                 <a th:if="${xlsPdfFilename}" th:href="@{'/files/' + ${xlsPdfFilename}}" class="btn btn-secondary" style="margin-left: 0.5rem;">
-                    📊 Download Input Excel (PDF)
+                    Download Input Excel (PDF)
                 </a>
             </div>
         </div>
@@ -55,12 +55,12 @@
     <!-- Upload Form -->
     <form action="/" enctype="multipart/form-data" method="POST">
         <div class="form-group">
-            <label for="fileInput">📊 Select Excel Timesheet or ZIP file</label>
+            <label for="fileInput">Select Excel Timesheet or ZIP file</label>
             <input id="fileInput" name="file" type="file"
                    accept=".xls,.xlsx,.xlsm,.xlsb,.zip"/>
         </div>
         <button id="uploadButton" type="submit" class="btn btn-primary" disabled>
-            🚀 Upload and Convert
+            Upload and Convert
         </button>
     </form>
 
@@ -88,7 +88,7 @@
 
     <!-- File List -->
     <div th:if="${files != null and !#lists.isEmpty(files)}" class="file-list">
-        <h3>📂 Previously Converted Files</h3>
+        <h3>Previously Converted Files</h3>
         <ul>
             <li th:each="file : ${files}">
                 <a th:href="${file}" th:text="${file}"></a>
