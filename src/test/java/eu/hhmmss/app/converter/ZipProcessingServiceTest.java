@@ -4,7 +4,6 @@ import eu.hhmmss.app.uploadingfiles.storage.StorageException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.io.ClassPathResource;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -13,7 +12,8 @@ import java.nio.file.Path;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ZipProcessingServiceTest {
 
@@ -174,8 +174,8 @@ class ZipProcessingServiceTest {
             zos.closeEntry();
         }
 
-        // Should throw IOException due to path traversal protection
-        assertThrows(IOException.class, () -> {
+        // Should throw StorageException due to path traversal protection
+        assertThrows(StorageException.class, () -> {
             zipProcessingService.processZipFile(zipPath, templatePath, tempDir);
         }, "Should prevent path traversal attacks");
     }
