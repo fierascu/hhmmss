@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HH:MM:SS Terminal UI Preview</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --terminal-bg: #0a0e14;
+            --terminal-fg: #00ff41;
+            --terminal-border: #00ff41;
+            --terminal-shadow: #00ff4155;
+            --error-color: #ff3333;
+            --error-bg: #2a0f0f;
+            --error-border: #ff3333;
+            --success-color: #00ff41;
+            --success-bg: #0f2a0f;
+            --success-border: #00ff41;
+            --link-color: #00d4ff;
+            --link-hover: #00ffff;
+            --secondary-color: #ffaa00;
+            --muted-color: #555555;
+            --input-bg: #151a21;
+        }
+
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.96; }
+        }
+
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        body {
+            font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
+            background: var(--terminal-bg);
+            min-height: 100vh;
+            padding: 2rem 1rem;
+            color: var(--terminal-fg);
+            line-height: 1.6;
+            position: relative;
+            text-shadow: 0 0 2px var(--terminal-shadow);
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15),
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(transparent, var(--terminal-shadow));
+            animation: scanline 8s linear infinite;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            margin-bottom: 2rem;
+            animation: fadeInDown 0.6s ease-out;
+            border: 2px solid var(--terminal-border);
+            padding: 1.5rem;
+            background: rgba(0, 255, 65, 0.03);
+            box-shadow: 0 0 10px var(--terminal-shadow);
+        }
+
+        .header h1 {
+            color: var(--terminal-fg);
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 10px var(--terminal-shadow);
+            letter-spacing: 2px;
+        }
+
+        .header h1::before {
+            content: '$ ';
+            color: var(--terminal-fg);
+        }
+
+        .header p {
+            color: var(--secondary-color);
+            font-size: 1rem;
+            letter-spacing: 1px;
+        }
+
+        .header p::before {
+            content: '> ';
+            color: var(--terminal-fg);
+        }
+
+        .card {
+            background: rgba(10, 14, 20, 0.9);
+            border: 2px solid var(--terminal-border);
+            padding: 2rem;
+            animation: fadeInUp 0.6s ease-out;
+            box-shadow: 0 0 20px var(--terminal-shadow), inset 0 0 20px rgba(0, 255, 65, 0.02);
+            margin-bottom: 2rem;
+        }
+
+        .alert {
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            border: 2px solid;
+            animation: slideIn 0.4s ease-out;
+            font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
+        }
+
+        .alert-error {
+            background-color: var(--error-bg);
+            border-color: var(--error-border);
+            color: var(--error-color);
+            box-shadow: 0 0 10px rgba(255, 51, 51, 0.3);
+        }
+
+        .alert-success {
+            background-color: var(--success-bg);
+            border-color: var(--success-border);
+            color: var(--success-color);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+
+        .alert strong {
+            font-weight: 700;
+            display: block;
+            margin-bottom: 0.25rem;
+            letter-spacing: 1px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border: 2px solid;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
+            letter-spacing: 1px;
+            background: transparent;
+            position: relative;
+        }
+
+        .btn::before {
+            content: '[ ';
+        }
+
+        .btn::after {
+            content: ' ]';
+        }
+
+        .btn-primary {
+            border-color: var(--terminal-border);
+            color: var(--terminal-fg);
+        }
+
+        .btn-primary:hover {
+            background-color: rgba(0, 255, 65, 0.1);
+            box-shadow: 0 0 15px var(--terminal-shadow);
+            text-shadow: 0 0 5px var(--terminal-shadow);
+        }
+
+        .btn-primary:disabled {
+            border-color: var(--muted-color);
+            color: var(--muted-color);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-success {
+            border-color: var(--success-color);
+            color: var(--success-color);
+        }
+
+        .btn-success:hover {
+            background-color: rgba(0, 255, 65, 0.15);
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+        }
+
+        .btn-secondary {
+            border-color: var(--secondary-color);
+            color: var(--secondary-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(255, 170, 0, 0.1);
+            box-shadow: 0 0 15px rgba(255, 170, 0, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+            color: var(--terminal-fg);
+            letter-spacing: 1px;
+        }
+
+        .form-group label::before {
+            content: '> ';
+            color: var(--terminal-fg);
+        }
+
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--terminal-border);
+            background-color: var(--input-bg);
+            color: var(--terminal-fg);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
+        }
+
+        input[type="file"]:hover {
+            background-color: rgba(0, 255, 65, 0.05);
+            box-shadow: 0 0 10px var(--terminal-shadow);
+        }
+
+        input[type="file"]::file-selector-button {
+            background: transparent;
+            border: 1px solid var(--terminal-border);
+            color: var(--terminal-fg);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
+            margin-right: 1rem;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background: rgba(0, 255, 65, 0.1);
+        }
+
+        .file-list {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid var(--terminal-border);
+        }
+
+        .file-list h3 {
+            font-size: 1.125rem;
+            margin-bottom: 1rem;
+            color: var(--terminal-fg);
+            letter-spacing: 1px;
+        }
+
+        .file-list h3::before {
+            content: '// ';
+            color: var(--secondary-color);
+        }
+
+        .file-list ul {
+            list-style: none;
+        }
+
+        .file-list li {
+            margin-bottom: 0.5rem;
+            padding-left: 1rem;
+        }
+
+        .file-list li::before {
+            content: '> ';
+            color: var(--terminal-fg);
+            margin-left: -1rem;
+            margin-right: 0.25rem;
+        }
+
+        .file-list a {
+            color: var(--link-color);
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .file-list a:hover {
+            color: var(--link-hover);
+            text-shadow: 0 0 5px var(--link-hover);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: var(--muted-color);
+            font-size: 0.875rem;
+            border: 1px solid var(--muted-color);
+            padding: 1rem;
+            letter-spacing: 1px;
+        }
+
+        .footer::before {
+            content: '--- ';
+        }
+
+        .footer::after {
+            content: ' ---';
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 1rem 0.5rem;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>HH:MM:SS</h1>
+            <p>Timesheet Converter v1.0</p>
+        </div>
+
+        <!-- Main Upload Card -->
+        <div class="card">
+            <form action="/" enctype="multipart/form-data" method="POST">
+                <div class="form-group">
+                    <label for="fileInput">Select Excel Timesheet or ZIP file</label>
+                    <input id="fileInput" name="file" type="file"
+                           accept=".xls,.xlsx,.xlsm,.xlsb,.zip"/>
+                </div>
+                <button id="uploadButton" type="submit" class="btn btn-primary" disabled>
+                    Upload and Convert
+                </button>
+            </form>
+
+            <div class="file-list">
+                <h3>Previously Converted Files</h3>
+                <ul>
+                    <li><a href="#">timesheet_2024_01.docx</a></li>
+                    <li><a href="#">timesheet_2024_02.docx</a></li>
+                    <li><a href="#">employee_hours_march.docx</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Success Alert Example -->
+        <div class="card">
+            <h3 style="color: var(--terminal-fg); margin-bottom: 1rem;">Success State Preview:</h3>
+            <div class="alert alert-success">
+                <strong>[OK]</strong>
+                <span>File uploaded and converted successfully!</span>
+            </div>
+            <div style="margin-top: 1rem;">
+                <a href="#" class="btn btn-success">Download Timesheet (DOCX)</a>
+                <a href="#" class="btn btn-primary" style="margin-left: 0.5rem;">Download Timesheet (PDF)</a>
+                <a href="#" class="btn btn-secondary" style="margin-left: 0.5rem;">Download Input Excel (PDF)</a>
+            </div>
+        </div>
+
+        <!-- Error Alert Example -->
+        <div class="card">
+            <h3 style="color: var(--terminal-fg); margin-bottom: 1rem;">Error State Preview:</h3>
+            <div class="alert alert-error">
+                <strong>[ERROR]</strong>
+                <span>Invalid file format. Please upload an Excel file (.xls, .xlsx, .xlsm, .xlsb) or ZIP archive.</span>
+            </div>
+            <a href="#" class="btn btn-primary">Back to Home</a>
+        </div>
+
+        <div class="footer">
+            <p>XLSX to DOCX conversion utility</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function() {
+            var uploadButton = document.getElementById('uploadButton');
+            var file = this.files[0];
+
+            if (!file) {
+                uploadButton.disabled = true;
+                return;
+            }
+
+            var fileName = file.name.toLowerCase();
+            var isValidFile = fileName.endsWith('.xls') ||
+                             fileName.endsWith('.xlsx') ||
+                             fileName.endsWith('.xlsm') ||
+                             fileName.endsWith('.xlsb') ||
+                             fileName.endsWith('.zip');
+
+            uploadButton.disabled = !isValidFile;
+        });
+    </script>
+</body>
+
+</html>
