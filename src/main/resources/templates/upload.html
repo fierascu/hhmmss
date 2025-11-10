@@ -48,14 +48,15 @@
             return;
         }
 
-        // Check if the file has an Excel extension
+        // Check if the file has an Excel or ZIP extension
         var fileName = file.name.toLowerCase();
-        var isExcelFile = fileName.endsWith('.xls') ||
+        var isValidFile = fileName.endsWith('.xls') ||
                          fileName.endsWith('.xlsx') ||
                          fileName.endsWith('.xlsm') ||
-                         fileName.endsWith('.xlsb');
+                         fileName.endsWith('.xlsb') ||
+                         fileName.endsWith('.zip');
 
-        uploadButton.disabled = !isExcelFile;
+        uploadButton.disabled = !isValidFile;
     });
 </script>
 <div>
