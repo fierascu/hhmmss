@@ -2,11 +2,13 @@ package eu.hhmmss.app.uploadingfiles.storage;
 
 import eu.hhmmss.app.converter.DocService;
 import eu.hhmmss.app.converter.HhmmssDto;
+import eu.hhmmss.app.converter.PdfService;
 import eu.hhmmss.app.converter.XlsService;
 import eu.hhmmss.app.converter.ZipProcessingService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jodconverter.core.office.OfficeException;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -30,6 +32,7 @@ public class UploadController {
 
     private final UploadService uploadService;
     private final ZipProcessingService zipProcessingService;
+    private final PdfService pdfService;
 
     @GetMapping("/")
     public String listUploadedFiles(Model model, HttpSession session) {
@@ -101,7 +104,7 @@ public class UploadController {
      * Handles processing of a single Excel file.
      */
     private String handleExcelFile(Path uploadedFilePath, String uuidFilename, String originalFilename,
-                                    RedirectAttributes redirectAttributes) throws IOException {
+                                    RedirectAttributes redirectAttributes) throws IOException, OfficeException {
         // Step 2: Parse the uploaded XLS file
         HhmmssDto extractedData = XlsService.readTimesheet(uploadedFilePath);
         log.info("Extracted data from uploaded file: {} tasks, {} meta fields",
@@ -124,12 +127,27 @@ public class UploadController {
         // Clean up temp template
         Files.deleteIfExists(tempTemplate);
 
-        // Pass both filenames to the view
+        // Step 4: Generate PDF from input XLS (1:1 print)
+        String xlsPdfFilename = "input_" + UUID.randomUUID() + ".pdf";
+        Path xlsPdfPath = uploadService.load(xlsPdfFilename);
+        pdfService.convertXlsToPdf(uploadedFilePath, xlsPdfPath);
+        log.info("Generated PDF from input XLS as: {}", xlsPdfFilename);
+
+        // Step 5: Generate PDF from output DOC (1:1 print)
+        String docPdfFilename = "output_" + UUID.randomUUID() + ".pdf";
+        Path docPdfPath = uploadService.load(docPdfFilename);
+        pdfService.convertDocToPdf(extractedFilePath, docPdfPath);
+        log.info("Generated PDF from output DOC as: {}", docPdfFilename);
+
+        // Pass all filenames to the view
         redirectAttributes.addFlashAttribute("originalFilename", originalFilename);
         redirectAttributes.addFlashAttribute("uuidFilename", uuidFilename);
         redirectAttributes.addFlashAttribute("extractedFilename", extractedFilename);
+        redirectAttributes.addFlashAttribute("xlsPdfFilename", xlsPdfFilename);
+        redirectAttributes.addFlashAttribute("docPdfFilename", docPdfFilename);
+        redirectAttributes.addFlashAttribute("isZipResult", false);
         redirectAttributes.addFlashAttribute("successMessage",
-                "File processed successfully! Extracted " + extractedData.getTasks().size() + " tasks.");
+                "File processed successfully! Extracted " + extractedData.getTasks().size() + " tasks and generated PDFs.");
 
         return "redirect:/";
     }
