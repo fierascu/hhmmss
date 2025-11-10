@@ -3,6 +3,7 @@ package eu.hhmmss.app.uploadingfiles.storage;
 import eu.hhmmss.app.converter.DocService;
 import eu.hhmmss.app.converter.HhmmssDto;
 import eu.hhmmss.app.converter.XlsService;
+import eu.hhmmss.app.converter.ZipProcessingService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ import java.util.UUID;
 public class UploadController {
 
     private final UploadService uploadService;
+    private final ZipProcessingService zipProcessingService;
 
     @GetMapping("/")
     public String listUploadedFiles(Model model, HttpSession session) {
@@ -68,35 +70,15 @@ public class UploadController {
             String uuidFilename = uploadService.store(file);
             log.info("Stored uploaded file as: {}", uuidFilename);
 
-            // Step 2: Parse the uploaded XLS file
             Path uploadedFilePath = uploadService.load(uuidFilename);
-            HhmmssDto extractedData = XlsService.readTimesheet(uploadedFilePath);
-            log.info("Extracted data from uploaded file: {} tasks, {} meta fields",
-                    extractedData.getTasks().size(),
-                    extractedData.getMeta().size());
+            String originalFilename = file.getOriginalFilename();
 
-            // Step 3: Generate DOCX with extracted data
-            String extractedFilename = "timesheet_" + UUID.randomUUID() + ".docx";
-            Path extractedFilePath = uploadService.load(extractedFilename);
-
-            // Copy template to temporary location
-            Resource templateResource = new ClassPathResource("timesheet-template.docx");
-            Path tempTemplate = Files.createTempFile("template-", ".docx");
-            Files.copy(templateResource.getInputStream(), tempTemplate, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-
-            // Generate DOCX from template
-            DocService.addDataToDocs(tempTemplate, extractedData, extractedFilePath);
-            log.info("Generated timesheet DOCX file as: {}", extractedFilename);
-
-            // Clean up temp template
-            Files.deleteIfExists(tempTemplate);
-
-            // Pass both filenames to the view
-            redirectAttributes.addFlashAttribute("originalFilename", file.getOriginalFilename());
-            redirectAttributes.addFlashAttribute("uuidFilename", uuidFilename);
-            redirectAttributes.addFlashAttribute("extractedFilename", extractedFilename);
-            redirectAttributes.addFlashAttribute("successMessage",
-                    "File processed successfully! Extracted " + extractedData.getTasks().size() + " tasks.");
+            // Check if the file is a ZIP archive
+            if (isZipFile(originalFilename)) {
+                return handleZipFile(uploadedFilePath, originalFilename, redirectAttributes);
+            } else {
+                return handleExcelFile(uploadedFilePath, uuidFilename, originalFilename, redirectAttributes);
+            }
 
         } catch (StorageException e) {
             log.error("Storage error during file upload", e);
@@ -113,6 +95,94 @@ public class UploadController {
         }
 
         return "redirect:/";
+    }
+
+    /**
+     * Handles processing of a single Excel file.
+     */
+    private String handleExcelFile(Path uploadedFilePath, String uuidFilename, String originalFilename,
+                                    RedirectAttributes redirectAttributes) throws IOException {
+        // Step 2: Parse the uploaded XLS file
+        HhmmssDto extractedData = XlsService.readTimesheet(uploadedFilePath);
+        log.info("Extracted data from uploaded file: {} tasks, {} meta fields",
+                extractedData.getTasks().size(),
+                extractedData.getMeta().size());
+
+        // Step 3: Generate DOCX with extracted data
+        String extractedFilename = "timesheet_" + UUID.randomUUID() + ".docx";
+        Path extractedFilePath = uploadService.load(extractedFilename);
+
+        // Copy template to temporary location
+        Resource templateResource = new ClassPathResource("timesheet-template.docx");
+        Path tempTemplate = Files.createTempFile("template-", ".docx");
+        Files.copy(templateResource.getInputStream(), tempTemplate, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+        // Generate DOCX from template
+        DocService.addDataToDocs(tempTemplate, extractedData, extractedFilePath);
+        log.info("Generated timesheet DOCX file as: {}", extractedFilename);
+
+        // Clean up temp template
+        Files.deleteIfExists(tempTemplate);
+
+        // Pass both filenames to the view
+        redirectAttributes.addFlashAttribute("originalFilename", originalFilename);
+        redirectAttributes.addFlashAttribute("uuidFilename", uuidFilename);
+        redirectAttributes.addFlashAttribute("extractedFilename", extractedFilename);
+        redirectAttributes.addFlashAttribute("successMessage",
+                "File processed successfully! Extracted " + extractedData.getTasks().size() + " tasks.");
+
+        return "redirect:/";
+    }
+
+    /**
+     * Handles processing of a ZIP file containing multiple Excel files.
+     */
+    private String handleZipFile(Path zipFilePath, String originalFilename,
+                                  RedirectAttributes redirectAttributes) throws IOException {
+        log.info("Processing ZIP file: {}", originalFilename);
+
+        // Prepare template
+        Resource templateResource = new ClassPathResource("timesheet-template.docx");
+        Path tempTemplate = Files.createTempFile("template-", ".docx");
+        Files.copy(templateResource.getInputStream(), tempTemplate, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+        // Get output directory (same as upload directory)
+        Path outputDir = zipFilePath.getParent();
+
+        // Process ZIP file
+        ZipProcessingService.ZipProcessingResult result = zipProcessingService.processZipFile(
+                zipFilePath, tempTemplate, outputDir
+        );
+
+        // Clean up temp template
+        Files.deleteIfExists(tempTemplate);
+
+        // Build success message
+        StringBuilder message = new StringBuilder();
+        message.append("ZIP file processed successfully! ");
+        message.append("Converted ").append(result.successCount()).append(" file(s).");
+
+        if (result.failureCount() > 0) {
+            message.append(" Failed: ").append(result.failureCount()).append(" file(s).");
+        }
+
+        // Pass results to the view
+        redirectAttributes.addFlashAttribute("originalFilename", originalFilename);
+        redirectAttributes.addFlashAttribute("extractedFilename", result.resultZipFileName());
+        redirectAttributes.addFlashAttribute("successMessage", message.toString());
+        redirectAttributes.addFlashAttribute("isZipResult", true);
+        redirectAttributes.addFlashAttribute("processedFiles", result.processedFiles());
+        redirectAttributes.addFlashAttribute("failedFiles", result.failedFiles());
+
+        return "redirect:/";
+    }
+
+    /**
+     * Checks if a filename indicates a ZIP file.
+     */
+    private boolean isZipFile(String filename) {
+        if (filename == null) return false;
+        return filename.toLowerCase().endsWith(".zip");
     }
 
     @ExceptionHandler(StorageFileNotFoundException.class)

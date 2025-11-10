@@ -115,7 +115,7 @@ class UploadServiceTest {
         StorageException exception = assertThrows(StorageException.class,
                 () -> uploadService.store(file));
 
-        assertTrue(exception.getMessage().contains("not a valid ZIP/Excel file"));
+        assertTrue(exception.getMessage().contains("not a valid ZIP file"));
     }
 
     @Test
@@ -230,6 +230,24 @@ class UploadServiceTest {
     }
 
     @Test
+    void testStoreValidZipFile() throws IOException {
+        // Create a valid ZIP file (PK magic bytes)
+        byte[] zipContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "timesheets.zip",
+                "application/zip",
+                zipContent
+        );
+
+        String storedFilename = uploadService.store(file);
+
+        assertNotNull(storedFilename);
+        assertTrue(storedFilename.endsWith(".zip"));
+        assertTrue(Files.exists(testRootLocation.resolve(storedFilename)));
+    }
+
+    @Test
     void testStoreFilePreservesExtension() throws IOException {
         byte[] xlsmContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
         MockMultipartFile file = new MockMultipartFile(
@@ -254,11 +272,11 @@ class UploadServiceTest {
                 xlsxContent
         );
 
-        // This should throw an exception because the validator checks for Excel extensions
+        // This should throw an exception because the validator checks for Excel or ZIP extensions
         StorageException exception = assertThrows(StorageException.class,
                 () -> uploadService.store(file));
 
-        assertTrue(exception.getMessage().contains("Excel extension"));
+        assertTrue(exception.getMessage().contains("Excel or ZIP extension"));
     }
 
     @Test

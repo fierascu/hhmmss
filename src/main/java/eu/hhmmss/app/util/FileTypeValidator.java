@@ -18,24 +18,26 @@ public class FileTypeValidator {
     private static final byte[] ELF_MAGIC = {0x7F, 0x45, 0x4C, 0x46}; // ELF - Linux executable
 
     /**
-     * Validates that the file content matches its expected Excel extension.
+     * Validates that the file content matches its expected extension.
+     * Supports Excel files (.xls, .xlsx, .xlsm, .xlsb) and ZIP archives (.zip).
      *
      * @param inputStream The input stream of the file to validate
      * @param filename The original filename with extension
      * @throws IOException If unable to read the file
-     * @throws IllegalArgumentException If the file content doesn't match the Excel extension
+     * @throws IllegalArgumentException If the file content doesn't match the extension
      */
-    public static void validateExcelFile(InputStream inputStream, String filename) throws IOException {
+    public static void validateFile(InputStream inputStream, String filename) throws IOException {
         String lowerFilename = filename.toLowerCase();
 
         // Determine expected format based on extension
-        boolean isXlsx = lowerFilename.endsWith(".xlsx") ||
+        boolean isZipBased = lowerFilename.endsWith(".xlsx") ||
                         lowerFilename.endsWith(".xlsm") ||
-                        lowerFilename.endsWith(".xlsb");
+                        lowerFilename.endsWith(".xlsb") ||
+                        lowerFilename.endsWith(".zip");
         boolean isXls = lowerFilename.endsWith(".xls");
 
-        if (!isXlsx && !isXls) {
-            throw new IllegalArgumentException("File must have an Excel extension (.xls, .xlsx, .xlsm, or .xlsb)");
+        if (!isZipBased && !isXls) {
+            throw new IllegalArgumentException("File must have an Excel or ZIP extension (.xls, .xlsx, .xlsm, .xlsb, or .zip)");
         }
 
         // Read enough bytes to check various file signatures
@@ -43,23 +45,23 @@ public class FileTypeValidator {
         int bytesRead = inputStream.read(header);
 
         if (bytesRead < 2) {
-            throw new IllegalArgumentException("File is too small to be a valid Excel file");
+            throw new IllegalArgumentException("File is too small to be a valid file");
         }
 
         // Check for executable files first (security check)
         if (matchesMagicBytes(header, EXE_MAGIC)) {
-            throw new IllegalArgumentException("File appears to be a Windows executable (.exe), not an Excel file");
+            throw new IllegalArgumentException("File appears to be a Windows executable (.exe), not a valid file");
         }
         if (matchesMagicBytes(header, ELF_MAGIC)) {
-            throw new IllegalArgumentException("File appears to be a Linux executable (ELF), not an Excel file");
+            throw new IllegalArgumentException("File appears to be a Linux executable (ELF), not a valid file");
         }
 
-        // Validate Excel format magic bytes
-        if (isXlsx) {
-            // XLSX files are ZIP archives, should start with PK
+        // Validate file format magic bytes
+        if (isZipBased) {
+            // XLSX and ZIP files are ZIP archives, should start with PK
             if (!matchesMagicBytes(header, XLSX_MAGIC)) {
                 throw new IllegalArgumentException(
-                    "File has Excel extension (.xlsx/.xlsm/.xlsb) but content is not a valid ZIP/Excel file. " +
+                    "File has ZIP-based extension (.xlsx/.xlsm/.xlsb/.zip) but content is not a valid ZIP file. " +
                     "The file may have been renamed or corrupted."
                 );
             }

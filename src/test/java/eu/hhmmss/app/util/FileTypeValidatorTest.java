@@ -16,7 +16,7 @@ class FileTypeValidatorTest {
         byte[] xlsxHeader = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
         InputStream inputStream = new ByteArrayInputStream(xlsxHeader);
 
-        assertDoesNotThrow(() -> FileTypeValidator.validateExcelFile(inputStream, "test.xlsx"));
+        assertDoesNotThrow(() -> FileTypeValidator.validateFile(inputStream, "test.xlsx"));
     }
 
     @Test
@@ -25,7 +25,7 @@ class FileTypeValidatorTest {
         byte[] xlsmHeader = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
         InputStream inputStream = new ByteArrayInputStream(xlsmHeader);
 
-        assertDoesNotThrow(() -> FileTypeValidator.validateExcelFile(inputStream, "test.xlsm"));
+        assertDoesNotThrow(() -> FileTypeValidator.validateFile(inputStream, "test.xlsm"));
     }
 
     @Test
@@ -34,7 +34,7 @@ class FileTypeValidatorTest {
         byte[] xlsbHeader = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
         InputStream inputStream = new ByteArrayInputStream(xlsbHeader);
 
-        assertDoesNotThrow(() -> FileTypeValidator.validateExcelFile(inputStream, "test.xlsb"));
+        assertDoesNotThrow(() -> FileTypeValidator.validateFile(inputStream, "test.xlsb"));
     }
 
     @Test
@@ -43,7 +43,16 @@ class FileTypeValidatorTest {
         byte[] xlsHeader = {(byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0, (byte) 0xA1, (byte) 0xB1, 0x1A, (byte) 0xE1};
         InputStream inputStream = new ByteArrayInputStream(xlsHeader);
 
-        assertDoesNotThrow(() -> FileTypeValidator.validateExcelFile(inputStream, "test.xls"));
+        assertDoesNotThrow(() -> FileTypeValidator.validateFile(inputStream, "test.xls"));
+    }
+
+    @Test
+    void testValidateFile_ValidZip() throws IOException {
+        // ZIP files start with PK (ZIP magic bytes)
+        byte[] zipHeader = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+        InputStream inputStream = new ByteArrayInputStream(zipHeader);
+
+        assertDoesNotThrow(() -> FileTypeValidator.validateFile(inputStream, "test.zip"));
     }
 
     @Test
@@ -52,9 +61,9 @@ class FileTypeValidatorTest {
         InputStream inputStream = new ByteArrayInputStream(validHeader);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> FileTypeValidator.validateExcelFile(inputStream, "test.txt"));
+                () -> FileTypeValidator.validateFile(inputStream, "test.txt"));
 
-        assertEquals("File must have an Excel extension (.xls, .xlsx, .xlsm, or .xlsb)", exception.getMessage());
+        assertEquals("File must have an Excel or ZIP extension (.xls, .xlsx, .xlsm, .xlsb, or .zip)", exception.getMessage());
     }
 
     @Test
@@ -64,9 +73,9 @@ class FileTypeValidatorTest {
         InputStream inputStream = new ByteArrayInputStream(exeHeader);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> FileTypeValidator.validateExcelFile(inputStream, "malicious.xlsx"));
+                () -> FileTypeValidator.validateFile(inputStream, "malicious.xlsx"));
 
-        assertEquals("File appears to be a Windows executable (.exe), not an Excel file", exception.getMessage());
+        assertEquals("File appears to be a Windows executable (.exe), not a valid file", exception.getMessage());
     }
 
     @Test
@@ -76,9 +85,9 @@ class FileTypeValidatorTest {
         InputStream inputStream = new ByteArrayInputStream(elfHeader);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> FileTypeValidator.validateExcelFile(inputStream, "malicious.xlsx"));
+                () -> FileTypeValidator.validateFile(inputStream, "malicious.xlsx"));
 
-        assertEquals("File appears to be a Linux executable (ELF), not an Excel file", exception.getMessage());
+        assertEquals("File appears to be a Linux executable (ELF), not a valid file", exception.getMessage());
     }
 
     @Test
@@ -87,9 +96,9 @@ class FileTypeValidatorTest {
         InputStream inputStream = new ByteArrayInputStream(tinyFile);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> FileTypeValidator.validateExcelFile(inputStream, "test.xlsx"));
+                () -> FileTypeValidator.validateFile(inputStream, "test.xlsx"));
 
-        assertEquals("File is too small to be a valid Excel file", exception.getMessage());
+        assertEquals("File is too small to be a valid file", exception.getMessage());
     }
 
     @Test
@@ -98,9 +107,9 @@ class FileTypeValidatorTest {
         InputStream inputStream = new ByteArrayInputStream(emptyFile);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> FileTypeValidator.validateExcelFile(inputStream, "test.xlsx"));
+                () -> FileTypeValidator.validateFile(inputStream, "test.xlsx"));
 
-        assertEquals("File is too small to be a valid Excel file", exception.getMessage());
+        assertEquals("File is too small to be a valid file", exception.getMessage());
     }
 
     @Test
@@ -110,9 +119,9 @@ class FileTypeValidatorTest {
         InputStream inputStream = new ByteArrayInputStream(invalidHeader);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> FileTypeValidator.validateExcelFile(inputStream, "test.xlsx"));
+                () -> FileTypeValidator.validateFile(inputStream, "test.xlsx"));
 
-        assertTrue(exception.getMessage().contains("File has Excel extension (.xlsx/.xlsm/.xlsb) but content is not a valid ZIP/Excel file"));
+        assertTrue(exception.getMessage().contains("File has ZIP-based extension (.xlsx/.xlsm/.xlsb/.zip) but content is not a valid ZIP file"));
     }
 
     @Test
@@ -122,7 +131,7 @@ class FileTypeValidatorTest {
         InputStream inputStream = new ByteArrayInputStream(invalidHeader);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> FileTypeValidator.validateExcelFile(inputStream, "test.xls"));
+                () -> FileTypeValidator.validateFile(inputStream, "test.xls"));
 
         assertTrue(exception.getMessage().contains("File has Excel extension (.xls) but content is not a valid OLE2/Excel file"));
     }
@@ -134,7 +143,7 @@ class FileTypeValidatorTest {
         InputStream inputStream = new ByteArrayInputStream(invalidHeader);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> FileTypeValidator.validateExcelFile(inputStream, "test.xls"));
+                () -> FileTypeValidator.validateFile(inputStream, "test.xls"));
 
         assertTrue(exception.getMessage().contains("File has Excel extension (.xls) but content is not a valid OLE2/Excel file"));
     }
@@ -145,7 +154,7 @@ class FileTypeValidatorTest {
         byte[] xlsxHeader = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
         InputStream inputStream = new ByteArrayInputStream(xlsxHeader);
 
-        assertDoesNotThrow(() -> FileTypeValidator.validateExcelFile(inputStream, "TEST.XLSX"));
+        assertDoesNotThrow(() -> FileTypeValidator.validateFile(inputStream, "TEST.XLSX"));
     }
 
     @Test
@@ -154,6 +163,6 @@ class FileTypeValidatorTest {
         byte[] xlsxHeader = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
         InputStream inputStream = new ByteArrayInputStream(xlsxHeader);
 
-        assertDoesNotThrow(() -> FileTypeValidator.validateExcelFile(inputStream, "test.XlSx"));
+        assertDoesNotThrow(() -> FileTypeValidator.validateFile(inputStream, "test.XlSx"));
     }
 }

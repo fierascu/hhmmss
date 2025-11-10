@@ -49,9 +49,9 @@ public class UploadService {
             // Generate UUID filename while preserving extension
             String originalFilename = Objects.requireNonNull(file.getOriginalFilename());
 
-            // Validate file content matches Excel extension (security check)
+            // Validate file content matches extension (security check)
             try (InputStream validationStream = file.getInputStream()) {
-                FileTypeValidator.validateExcelFile(validationStream, originalFilename);
+                FileTypeValidator.validateFile(validationStream, originalFilename);
             } catch (IllegalArgumentException e) {
                 throw new StorageException(e.getMessage());
             }
