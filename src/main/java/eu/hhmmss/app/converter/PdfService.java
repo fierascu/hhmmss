@@ -32,7 +32,7 @@ public class PdfService {
      * @throws IOException if file operations fail
      * @throws OfficeException if LibreOffice conversion fails
      */
-    public void convertXlsToPdf(Path xlsPath, Path pdfPath) throws IOException, OfficeException {
+    public void convertXlsToPdf(Path xlsPath, Path pdfPath) throws OfficeException {
         log.info("Converting XLS to PDF: {} -> {}", xlsPath, pdfPath);
         documentConverter
                 .convert(xlsPath.toFile())

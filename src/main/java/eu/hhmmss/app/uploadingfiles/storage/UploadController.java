@@ -8,6 +8,7 @@ import eu.hhmmss.app.converter.ZipProcessingService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jodconverter.core.office.OfficeException;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -103,7 +104,7 @@ public class UploadController {
      * Handles processing of a single Excel file.
      */
     private String handleExcelFile(Path uploadedFilePath, String uuidFilename, String originalFilename,
-                                    RedirectAttributes redirectAttributes) throws IOException {
+                                    RedirectAttributes redirectAttributes) throws IOException, OfficeException {
         // Step 2: Parse the uploaded XLS file
         HhmmssDto extractedData = XlsService.readTimesheet(uploadedFilePath);
         log.info("Extracted data from uploaded file: {} tasks, {} meta fields",
@@ -144,6 +145,7 @@ public class UploadController {
         redirectAttributes.addFlashAttribute("extractedFilename", extractedFilename);
         redirectAttributes.addFlashAttribute("xlsPdfFilename", xlsPdfFilename);
         redirectAttributes.addFlashAttribute("docPdfFilename", docPdfFilename);
+        redirectAttributes.addFlashAttribute("isZipResult", false);
         redirectAttributes.addFlashAttribute("successMessage",
                 "File processed successfully! Extracted " + extractedData.getTasks().size() + " tasks and generated PDFs.");
 

@@ -1,5 +1,6 @@
 package eu.hhmmss.app.uploadingfiles.storage;
 
+import eu.hhmmss.app.converter.PdfService;
 import eu.hhmmss.app.converter.ZipProcessingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,8 +19,7 @@ import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -35,6 +35,9 @@ class UploadControllerTest {
 
     @MockBean
     private ZipProcessingService zipProcessingService;
+
+    @MockBean
+    private PdfService pdfService;
 
     @Test
     void testListUploadedFiles() throws Exception {
@@ -89,13 +92,17 @@ class UploadControllerTest {
                     return Paths.get("/tmp/uploads/" + filename);
                 });
 
+        // Mock PDF service
+        doNothing().when(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
+        doNothing().when(pdfService).convertDocToPdf(any(Path.class), any(Path.class));
+
         // XlsService returns empty DTO with 0 tasks, but processing succeeds
         mockMvc.perform(multipart("/")
                         .file(file))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/"))
                 .andExpect(flash().attributeExists("successMessage"))
-                .andExpect(flash().attribute("successMessage", "File processed successfully! Extracted 0 tasks."));
+                .andExpect(flash().attribute("successMessage", "File processed successfully! Extracted 0 tasks and generated PDFs."));
 
         verify(uploadService).store(file);
     }
@@ -121,8 +128,24 @@ class UploadControllerTest {
                     String filename = invocation.getArgument(0);
                     return Paths.get("/tmp/uploads/" + filename);
                 });
+        when(uploadService.load(argThat(filename ->
+                filename != null && filename.startsWith("input_") && filename.endsWith(".pdf"))))
+                .thenAnswer(invocation -> {
+                    String filename = invocation.getArgument(0);
+                    return Paths.get("/tmp/uploads/" + filename);
+                });
+        when(uploadService.load(argThat(filename ->
+                filename != null && filename.startsWith("output_") && filename.endsWith(".pdf"))))
+                .thenAnswer(invocation -> {
+                    String filename = invocation.getArgument(0);
+                    return Paths.get("/tmp/uploads/" + filename);
+                });
 
-        // The controller should successfully process the file and generate DOCX
+        // Mock PDF service
+        doNothing().when(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
+        doNothing().when(pdfService).convertDocToPdf(any(Path.class), any(Path.class));
+
+        // The controller should successfully process the file and generate DOCX and PDFs
         mockMvc.perform(multipart("/")
                         .file(file))
                 .andExpect(status().is3xxRedirection())
@@ -131,9 +154,15 @@ class UploadControllerTest {
                 .andExpect(flash().attributeExists("originalFilename"))
                 .andExpect(flash().attributeExists("uuidFilename"))
                 .andExpect(flash().attributeExists("extractedFilename"))
-                .andExpect(flash().attribute("originalFilename", "timesheet-in.xlsx"));
+                .andExpect(flash().attributeExists("xlsPdfFilename"))
+                .andExpect(flash().attributeExists("docPdfFilename"))
+                .andExpect(flash().attributeExists("isZipResult"))
+                .andExpect(flash().attribute("originalFilename", "timesheet-in.xlsx"))
+                .andExpect(flash().attribute("isZipResult", false));
 
         verify(uploadService).store(file);
+        verify(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
+        verify(pdfService).convertDocToPdf(any(Path.class), any(Path.class));
     }
 
     @Test
@@ -238,5 +267,99 @@ class UploadControllerTest {
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"" + filename + "\""));
 
         verify(uploadService).loadAsResource(filename);
+    }
+
+    @Test
+    void testHandleFileUploadWithPdfConversionFailure() throws Exception {
+        // Load the real test XLS file
+        Path testXlsPath = Paths.get("src/test/resources/timesheet-in.xlsx");
+        byte[] xlsxContent = Files.readAllBytes(testXlsPath);
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "timesheet-in.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        when(uploadService.store(any())).thenReturn("uuid-12345.xlsx");
+        when(uploadService.load("uuid-12345.xlsx")).thenReturn(testXlsPath);
+        when(uploadService.load(argThat(filename ->
+                filename != null && filename.startsWith("timesheet_") && filename.endsWith(".docx"))))
+                .thenAnswer(invocation -> {
+                    String filename = invocation.getArgument(0);
+                    return Paths.get("/tmp/uploads/" + filename);
+                });
+        when(uploadService.load(argThat(filename ->
+                filename != null && filename.startsWith("input_") && filename.endsWith(".pdf"))))
+                .thenAnswer(invocation -> {
+                    String filename = invocation.getArgument(0);
+                    return Paths.get("/tmp/uploads/" + filename);
+                });
+
+        // Mock PDF service to throw exception
+        doThrow(new RuntimeException("PDF conversion failed")).when(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
+
+        // The controller should handle the exception gracefully
+        mockMvc.perform(multipart("/")
+                        .file(file))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attributeExists("errorMessage"))
+                .andExpect(flash().attribute("errorMessage", containsString("An unexpected error occurred")));
+
+        verify(uploadService).store(file);
+        verify(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
+    }
+
+    @Test
+    void testHandleFileUploadWithDocPdfConversionFailure() throws Exception {
+        // Load the real test XLS file
+        Path testXlsPath = Paths.get("src/test/resources/timesheet-in.xlsx");
+        byte[] xlsxContent = Files.readAllBytes(testXlsPath);
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "timesheet-in.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        when(uploadService.store(any())).thenReturn("uuid-12345.xlsx");
+        when(uploadService.load("uuid-12345.xlsx")).thenReturn(testXlsPath);
+        when(uploadService.load(argThat(filename ->
+                filename != null && filename.startsWith("timesheet_") && filename.endsWith(".docx"))))
+                .thenAnswer(invocation -> {
+                    String filename = invocation.getArgument(0);
+                    return Paths.get("/tmp/uploads/" + filename);
+                });
+        when(uploadService.load(argThat(filename ->
+                filename != null && filename.startsWith("input_") && filename.endsWith(".pdf"))))
+                .thenAnswer(invocation -> {
+                    String filename = invocation.getArgument(0);
+                    return Paths.get("/tmp/uploads/" + filename);
+                });
+        when(uploadService.load(argThat(filename ->
+                filename != null && filename.startsWith("output_") && filename.endsWith(".pdf"))))
+                .thenAnswer(invocation -> {
+                    String filename = invocation.getArgument(0);
+                    return Paths.get("/tmp/uploads/" + filename);
+                });
+
+        // Mock PDF service - XLS to PDF succeeds, DOC to PDF fails
+        doNothing().when(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
+        doThrow(new RuntimeException("DOC to PDF conversion failed")).when(pdfService).convertDocToPdf(any(Path.class), any(Path.class));
+
+        // The controller should handle the exception gracefully
+        mockMvc.perform(multipart("/")
+                        .file(file))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attributeExists("errorMessage"))
+                .andExpect(flash().attribute("errorMessage", containsString("An unexpected error occurred")));
+
+        verify(uploadService).store(file);
+        verify(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
+        verify(pdfService).convertDocToPdf(any(Path.class), any(Path.class));
     }
 }
