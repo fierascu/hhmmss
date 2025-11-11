@@ -74,10 +74,88 @@ src/
 ## Getting Started
 
 ### Prerequisites
-- Java 17 or higher
+
+**For Local Development:**
+- Java 21 or higher
 - Maven 3.6+
 
-### Running the Application
+**For Docker Deployment:**
+- Docker 20.10+
+- Docker Compose 2.0+ (optional, but recommended)
+
+### Running with Docker (Recommended)
+
+The easiest way to run the application is using Docker:
+
+#### Quick Start with Docker Compose
+
+1. Clone the repository:
+```bash
+git clone https://github.com/fierascu/hhmmss.git
+cd hhmmss
+```
+
+2. Start the application:
+```bash
+docker-compose up -d
+```
+
+3. Open your browser and navigate to:
+```
+http://localhost:8080
+```
+
+4. Stop the application:
+```bash
+docker-compose down
+```
+
+#### Building and Running with Docker
+
+Alternatively, you can use Docker directly:
+
+1. Build the Docker image:
+```bash
+docker build -t hhmmss:latest .
+```
+
+2. Run the container:
+```bash
+docker run -d \
+  --name hhmmss-app \
+  -p 8080:8080 \
+  -e SPRING_PROFILES_ACTIVE=docker \
+  hhmmss:latest
+```
+
+3. View logs:
+```bash
+docker logs -f hhmmss-app
+```
+
+4. Stop the container:
+```bash
+docker stop hhmmss-app
+docker rm hhmmss-app
+```
+
+#### Docker Configuration
+
+The Docker setup includes:
+- **Multi-stage build**: Optimized image size using separate build and runtime stages
+- **LibreOffice integration**: Pre-installed for PDF conversion capabilities
+- **Health checks**: Automatic health monitoring via Spring Boot Actuator
+- **Non-root user**: Runs as unprivileged user for enhanced security
+- **Resource limits**: JVM configured for containerized environments (75% max RAM)
+- **Volume support**: Optional persistent storage for uploaded files
+
+**Environment Variables:**
+- `SPRING_PROFILES_ACTIVE=docker` - Activates Docker-specific configuration
+- `JAVA_OPTS` - JVM options (default: `-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0`)
+- `SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE` - Max upload size (default: 128KB)
+- `JODCONVERTER_LOCAL_ENABLED` - Enable/disable LibreOffice integration (default: true)
+
+### Running Locally (Without Docker)
 
 1. Clone the repository:
 ```bash
@@ -105,6 +183,11 @@ http://localhost:8080
 Execute the comprehensive test suite:
 ```bash
 mvn test
+```
+
+Or with Docker:
+```bash
+docker run --rm -v "$(pwd)":/build -w /build maven:3.9-eclipse-temurin-21-alpine mvn test
 ```
 
 ## Usage
