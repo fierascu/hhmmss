@@ -1,0 +1,243 @@
+package eu.hhmmss.app.uploadingfiles.storage;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class FileCleanupServiceTest {
+
+    private FileCleanupService cleanupService;
+    private Path testUploadLocation;
+
+    @BeforeEach
+    void setUp() throws IOException {
+        cleanupService = new FileCleanupService();
+
+        // Set retention period to 7 days for testing
+        ReflectionTestUtils.setField(cleanupService, "retentionDays", 7);
+
+        // Initialize the service
+        cleanupService.initialize();
+
+        // Get the actual upload location used by the service
+        String tempDir = System.getProperty("java.io.tmpdir");
+        testUploadLocation = Paths.get(tempDir, "uploads");
+
+        // Ensure the directory exists
+        Files.createDirectories(testUploadLocation);
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Clean up test files
+        try {
+            if (Files.exists(testUploadLocation)) {
+                try (Stream<Path> files = Files.list(testUploadLocation)) {
+                    for (Path file : files.toList()) {
+                        Files.deleteIfExists(file);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Ignore cleanup errors
+        }
+    }
+
+    @Test
+    void testInitialize() {
+        assertTrue(Files.exists(testUploadLocation), "Upload directory should exist");
+        assertTrue(Files.isDirectory(testUploadLocation), "Upload location should be a directory");
+    }
+
+    @Test
+    void testCleanupDeletesOldFiles() throws IOException {
+        // Create an old file (10 days old)
+        Path oldFile = testUploadLocation.resolve("old-file.xlsx");
+        Files.createFile(oldFile);
+        Instant oldTime = Instant.now().minus(10, ChronoUnit.DAYS);
+        Files.setLastModifiedTime(oldFile, FileTime.from(oldTime));
+
+        // Run cleanup
+        cleanupService.cleanupOldFiles();
+
+        // Verify the old file was deleted
+        assertFalse(Files.exists(oldFile), "Old file should be deleted");
+    }
+
+    @Test
+    void testCleanupRetainsRecentFiles() throws IOException {
+        // Create a recent file (2 days old)
+        Path recentFile = testUploadLocation.resolve("recent-file.xlsx");
+        Files.createFile(recentFile);
+        Instant recentTime = Instant.now().minus(2, ChronoUnit.DAYS);
+        Files.setLastModifiedTime(recentFile, FileTime.from(recentTime));
+
+        // Run cleanup
+        cleanupService.cleanupOldFiles();
+
+        // Verify the recent file was retained
+        assertTrue(Files.exists(recentFile), "Recent file should be retained");
+    }
+
+    @Test
+    void testCleanupMixedFiles() throws IOException {
+        // Create multiple files with different ages
+        Path oldFile1 = testUploadLocation.resolve("old-file-1.xlsx");
+        Path oldFile2 = testUploadLocation.resolve("old-file-2.pdf");
+        Path recentFile1 = testUploadLocation.resolve("recent-file-1.docx");
+        Path recentFile2 = testUploadLocation.resolve("recent-file-2.zip");
+
+        Files.createFile(oldFile1);
+        Files.createFile(oldFile2);
+        Files.createFile(recentFile1);
+        Files.createFile(recentFile2);
+
+        // Set timestamps
+        Instant oldTime = Instant.now().minus(10, ChronoUnit.DAYS);
+        Instant recentTime = Instant.now().minus(2, ChronoUnit.DAYS);
+
+        Files.setLastModifiedTime(oldFile1, FileTime.from(oldTime));
+        Files.setLastModifiedTime(oldFile2, FileTime.from(oldTime));
+        Files.setLastModifiedTime(recentFile1, FileTime.from(recentTime));
+        Files.setLastModifiedTime(recentFile2, FileTime.from(recentTime));
+
+        // Run cleanup
+        cleanupService.cleanupOldFiles();
+
+        // Verify cleanup results
+        assertFalse(Files.exists(oldFile1), "Old file 1 should be deleted");
+        assertFalse(Files.exists(oldFile2), "Old file 2 should be deleted");
+        assertTrue(Files.exists(recentFile1), "Recent file 1 should be retained");
+        assertTrue(Files.exists(recentFile2), "Recent file 2 should be retained");
+    }
+
+    @Test
+    void testCleanupWithExactRetentionBoundary() throws IOException {
+        // Create a file exactly 7 days old (at the boundary)
+        Path boundaryFile = testUploadLocation.resolve("boundary-file.xlsx");
+        Files.createFile(boundaryFile);
+        Instant boundaryTime = Instant.now().minus(7, ChronoUnit.DAYS);
+        Files.setLastModifiedTime(boundaryFile, FileTime.from(boundaryTime));
+
+        // Create a file just over 7 days old
+        Path overBoundaryFile = testUploadLocation.resolve("over-boundary-file.xlsx");
+        Files.createFile(overBoundaryFile);
+        Instant overBoundaryTime = Instant.now().minus(7, ChronoUnit.DAYS).minus(1, ChronoUnit.HOURS);
+        Files.setLastModifiedTime(overBoundaryFile, FileTime.from(overBoundaryTime));
+
+        // Run cleanup
+        cleanupService.cleanupOldFiles();
+
+        // Files older than retention period should be deleted
+        assertFalse(Files.exists(overBoundaryFile), "File over 7 days old should be deleted");
+    }
+
+    @Test
+    void testCleanupWithEmptyDirectory() throws IOException {
+        // Ensure directory is empty
+        try (Stream<Path> files = Files.list(testUploadLocation)) {
+            assertEquals(0, files.count(), "Directory should be empty");
+        }
+
+        // Run cleanup - should complete without errors
+        assertDoesNotThrow(() -> cleanupService.cleanupOldFiles());
+    }
+
+    @Test
+    void testCleanupWithNonExistentDirectory() throws IOException {
+        // Delete the upload directory
+        if (Files.exists(testUploadLocation)) {
+            try (Stream<Path> files = Files.list(testUploadLocation)) {
+                for (Path file : files.toList()) {
+                    Files.deleteIfExists(file);
+                }
+            }
+            Files.deleteIfExists(testUploadLocation);
+        }
+
+        // Run cleanup - should handle gracefully
+        assertDoesNotThrow(() -> cleanupService.cleanupOldFiles());
+    }
+
+    @Test
+    void testCleanupIgnoresSubdirectories() throws IOException {
+        // Create a subdirectory
+        Path subdir = testUploadLocation.resolve("subdir");
+        Files.createDirectory(subdir);
+        Instant oldTime = Instant.now().minus(10, ChronoUnit.DAYS);
+        Files.setLastModifiedTime(subdir, FileTime.from(oldTime));
+
+        // Run cleanup
+        cleanupService.cleanupOldFiles();
+
+        // Subdirectory should still exist (we only delete files, not directories)
+        assertTrue(Files.exists(subdir), "Subdirectory should be ignored by cleanup");
+    }
+
+    @Test
+    void testManualCleanup() throws IOException {
+        // Create an old file
+        Path oldFile = testUploadLocation.resolve("old-manual-file.xlsx");
+        Files.createFile(oldFile);
+        Instant oldTime = Instant.now().minus(10, ChronoUnit.DAYS);
+        Files.setLastModifiedTime(oldFile, FileTime.from(oldTime));
+
+        // Run manual cleanup
+        assertDoesNotThrow(() -> cleanupService.manualCleanup());
+
+        // Verify the old file was deleted
+        assertFalse(Files.exists(oldFile), "Old file should be deleted by manual cleanup");
+    }
+
+    @Test
+    void testCleanupWithDifferentRetentionPeriod() throws IOException {
+        // Set retention period to 3 days
+        ReflectionTestUtils.setField(cleanupService, "retentionDays", 3);
+        cleanupService.initialize();
+
+        // Create a file 5 days old
+        Path oldFile = testUploadLocation.resolve("5-day-old-file.xlsx");
+        Files.createFile(oldFile);
+        Instant oldTime = Instant.now().minus(5, ChronoUnit.DAYS);
+        Files.setLastModifiedTime(oldFile, FileTime.from(oldTime));
+
+        // Create a file 2 days old
+        Path recentFile = testUploadLocation.resolve("2-day-old-file.xlsx");
+        Files.createFile(recentFile);
+        Instant recentTime = Instant.now().minus(2, ChronoUnit.DAYS);
+        Files.setLastModifiedTime(recentFile, FileTime.from(recentTime));
+
+        // Run cleanup
+        cleanupService.cleanupOldFiles();
+
+        // Verify cleanup based on 3-day retention
+        assertFalse(Files.exists(oldFile), "5-day-old file should be deleted with 3-day retention");
+        assertTrue(Files.exists(recentFile), "2-day-old file should be retained with 3-day retention");
+    }
+
+    @Test
+    void testCleanupWithVeryNewFile() throws IOException {
+        // Create a file just created (current time)
+        Path newFile = testUploadLocation.resolve("brand-new-file.xlsx");
+        Files.createFile(newFile);
+
+        // Run cleanup
+        cleanupService.cleanupOldFiles();
+
+        // Verify the new file is retained
+        assertTrue(Files.exists(newFile), "Brand new file should be retained");
+    }
+}
