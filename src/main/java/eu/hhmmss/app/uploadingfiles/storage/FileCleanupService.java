@@ -65,15 +65,15 @@ public class FileCleanupService {
                     }
 
                     BasicFileAttributes attrs = Files.readAttributes(file, BasicFileAttributes.class);
-                    Instant fileCreationTime = attrs.creationTime().toInstant();
+                    Instant fileModifiedTime = attrs.lastModifiedTime().toInstant();
 
-                    if (fileCreationTime.isBefore(cutoffTime)) {
+                    if (fileModifiedTime.isBefore(cutoffTime)) {
                         long fileSize = attrs.size();
                         Files.delete(file);
                         deletedCount++;
                         totalBytesFreed += fileSize;
-                        log.debug("Deleted old file: {} (created: {}, size: {} bytes)",
-                                file.getFileName(), fileCreationTime, fileSize);
+                        log.debug("Deleted old file: {} (modified: {}, size: {} bytes)",
+                                file.getFileName(), fileModifiedTime, fileSize);
                     }
                 } catch (IOException e) {
                     errorCount++;
