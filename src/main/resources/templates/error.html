@@ -1,32 +1,32 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org"
-      th:replace="~{layout :: layout(title='Error', content=~{::content})}">
+      th:replace="~{${theme == 'classic' ? 'layout-classic' : 'layout'} :: layout(title='Error', content=~{::content})}">
 
 <th:block th:fragment="content">
     <!-- Error Header -->
     <div class="alert alert-error">
         <strong>
-            🚫 Error <span th:text="${status != null ? status : '500'}"></span>
+            [ERROR] <span th:text="${status != null ? status : '500'}"></span>
             <span th:text="${error != null ? ' - ' + error : ''}"></span>
         </strong>
     </div>
 
     <!-- Error Details -->
-    <div style="background-color: #f9fafb; padding: 1.5rem; border-radius: 0.5rem; border-left: 4px solid var(--error-color); margin-bottom: 1.5rem;">
-        <p th:if="${message}" style="margin-bottom: 0.75rem; color: var(--text-primary); font-weight: 600;">
+    <div style="background-color: #151a21; padding: 1.5rem; border-left: 4px solid var(--error-color); margin-bottom: 1.5rem;">
+        <p th:if="${message}" style="margin-bottom: 0.75rem; color: var(--error-color); font-weight: 600;">
             <strong>Message:</strong> <span th:text="${message}">An unexpected error occurred</span>
         </p>
-        <p th:if="${timestamp}" style="margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+        <p th:if="${timestamp}" style="margin-bottom: 0.5rem; color: var(--muted-color); font-size: 0.875rem;">
             <strong>Timestamp:</strong> <span th:text="${timestamp}"></span>
         </p>
-        <p th:if="${path}" style="margin-bottom: 0; color: var(--text-secondary); font-size: 0.875rem;">
+        <p th:if="${path}" style="margin-bottom: 0; color: var(--muted-color); font-size: 0.875rem;">
             <strong>Path:</strong> <span th:text="${path}"></span>
         </p>
     </div>
 
     <!-- Back to Home Button -->
-    <a href="/" class="btn btn-primary">
-        🏠 Back to Home
+    <a th:href="${theme == 'classic' ? '/?theme=classic' : '/'}" class="btn btn-primary">
+        Back to Home
     </a>
 </th:block>
 

@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html xmlns:th="https://www.thymeleaf.org" th:fragment="layout (title, content)">
+<html>
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${title}">Page Title</title>
-    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
-    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <title>HH:MM:SS Terminal UI Preview</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <style>
         * {
             margin: 0;
@@ -136,6 +136,7 @@
             padding: 2rem;
             animation: fadeInUp 0.6s ease-out;
             box-shadow: 0 0 20px var(--terminal-shadow), inset 0 0 20px rgba(0, 255, 65, 0.02);
+            margin-bottom: 2rem;
         }
 
         .alert {
@@ -331,21 +332,12 @@
             letter-spacing: 1px;
         }
 
-        .theme-switch {
-            margin-top: 0.75rem;
-            font-size: 0.75rem;
-            opacity: 0.6;
+        .footer::before {
+            content: '--- ';
         }
 
-        .theme-switch a {
-            color: var(--muted-color);
-            text-decoration: none;
-            transition: opacity 0.2s ease;
-        }
-
-        .theme-switch a:hover {
-            opacity: 1;
-            text-decoration: underline;
+        .footer::after {
+            content: ' ---';
         }
 
         @keyframes fadeInDown {
@@ -404,17 +396,78 @@
             <p>Timesheet Converter v1.0</p>
         </div>
 
+        <!-- Main Upload Card -->
         <div class="card">
-            <div th:replace="${content}"></div>
+            <form action="/" enctype="multipart/form-data" method="POST">
+                <div class="form-group">
+                    <label for="fileInput">Select Excel Timesheet or ZIP file</label>
+                    <input id="fileInput" name="file" type="file"
+                           accept=".xls,.xlsx,.xlsm,.xlsb,.zip"/>
+                </div>
+                <button id="uploadButton" type="submit" class="btn btn-primary" disabled>
+                    Upload and Convert
+                </button>
+            </form>
+
+            <div class="file-list">
+                <h3>Previously Converted Files</h3>
+                <ul>
+                    <li><a href="#">timesheet_2024_01.docx</a></li>
+                    <li><a href="#">timesheet_2024_02.docx</a></li>
+                    <li><a href="#">employee_hours_march.docx</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Success Alert Example -->
+        <div class="card">
+            <h3 style="color: var(--terminal-fg); margin-bottom: 1rem;">Success State Preview:</h3>
+            <div class="alert alert-success">
+                <strong>[OK]</strong>
+                <span>File uploaded and converted successfully!</span>
+            </div>
+            <div style="margin-top: 1rem;">
+                <a href="#" class="btn btn-success">Download Timesheet (DOCX)</a>
+                <a href="#" class="btn btn-primary" style="margin-left: 0.5rem;">Download Timesheet (PDF)</a>
+                <a href="#" class="btn btn-secondary" style="margin-left: 0.5rem;">Download Input Excel (PDF)</a>
+            </div>
+        </div>
+
+        <!-- Error Alert Example -->
+        <div class="card">
+            <h3 style="color: var(--terminal-fg); margin-bottom: 1rem;">Error State Preview:</h3>
+            <div class="alert alert-error">
+                <strong>[ERROR]</strong>
+                <span>Invalid file format. Please upload an Excel file (.xls, .xlsx, .xlsm, .xlsb) or ZIP archive.</span>
+            </div>
+            <a href="#" class="btn btn-primary">Back to Home</a>
         </div>
 
         <div class="footer">
-            <p>Excel to DOCX and PDF converter with ZIP batch processing</p>
-            <div class="theme-switch">
-                <a href="/?theme=classic">classic theme</a>
-            </div>
+            <p>XLSX to DOCX conversion utility</p>
         </div>
     </div>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function() {
+            var uploadButton = document.getElementById('uploadButton');
+            var file = this.files[0];
+
+            if (!file) {
+                uploadButton.disabled = true;
+                return;
+            }
+
+            var fileName = file.name.toLowerCase();
+            var isValidFile = fileName.endsWith('.xls') ||
+                             fileName.endsWith('.xlsx') ||
+                             fileName.endsWith('.xlsm') ||
+                             fileName.endsWith('.xlsb') ||
+                             fileName.endsWith('.zip');
+
+            uploadButton.disabled = !isValidFile;
+        });
+    </script>
 </body>
 
 </html>
