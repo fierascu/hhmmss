@@ -17,6 +17,32 @@ import java.time.LocalDateTime;
 @Slf4j
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    public void handleTooManyRequests(TooManyRequestsException exc,
+                                      HttpServletRequest request,
+                                      HttpServletResponse response) throws IOException {
+        log.warn("Handling TooManyRequestsException: {}", exc.getMessage());
+
+        // Store error in session
+        request.getSession().setAttribute("uploadError", exc.getMessage());
+
+        // Send redirect
+        response.sendRedirect(request.getContextPath() + "/");
+    }
+
+    @ExceptionHandler(FileSizeExceededException.class)
+    public void handleFileSizeExceeded(FileSizeExceededException exc,
+                                       HttpServletRequest request,
+                                       HttpServletResponse response) throws IOException {
+        log.warn("Handling FileSizeExceededException: {}", exc.getMessage());
+
+        // Store error in session
+        request.getSession().setAttribute("uploadError", exc.getMessage());
+
+        // Send redirect
+        response.sendRedirect(request.getContextPath() + "/");
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public void handleMaxSizeException(MaxUploadSizeExceededException exc,
                                        HttpServletRequest request,
@@ -24,7 +50,7 @@ public class GlobalExceptionHandler {
         log.info("Handling MaxUploadSizeExceededException");
 
         // Store error in session
-        request.getSession().setAttribute("uploadError", "File size exceeds the maximum limit of 128KB.");
+        request.getSession().setAttribute("uploadError", "File size exceeds the maximum limit of 2MB.");
 
         // Send redirect
         response.sendRedirect(request.getContextPath() + "/");

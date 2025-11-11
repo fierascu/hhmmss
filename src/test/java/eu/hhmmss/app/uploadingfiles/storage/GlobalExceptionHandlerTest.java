@@ -41,7 +41,7 @@ class GlobalExceptionHandlerTest {
 
         handler.handleMaxSizeException(exception, request, response);
 
-        verify(session).setAttribute("uploadError", "File size exceeds the maximum limit of 128KB.");
+        verify(session).setAttribute("uploadError", "File size exceeds the maximum limit of 2MB.");
         verify(response).sendRedirect("/");
     }
 
@@ -54,7 +54,7 @@ class GlobalExceptionHandlerTest {
 
         handler.handleMaxSizeException(exception, request, response);
 
-        verify(session).setAttribute("uploadError", "File size exceeds the maximum limit of 128KB.");
+        verify(session).setAttribute("uploadError", "File size exceeds the maximum limit of 2MB.");
         verify(response).sendRedirect("/myapp/");
     }
 
@@ -68,7 +68,7 @@ class GlobalExceptionHandlerTest {
         handler.handleMaxSizeException(exception, request, response);
 
         // Verify the exact error message
-        verify(session).setAttribute(eq("uploadError"), eq("File size exceeds the maximum limit of 128KB."));
+        verify(session).setAttribute(eq("uploadError"), eq("File size exceeds the maximum limit of 2MB."));
     }
 
     @Test
@@ -79,6 +79,74 @@ class GlobalExceptionHandlerTest {
         when(request.getContextPath()).thenReturn("/app");
 
         handler.handleMaxSizeException(exception, request, response);
+
+        // Verify that session.setAttribute is called exactly once
+        verify(session, times(1)).setAttribute(anyString(), anyString());
+
+        // Verify that response.sendRedirect is called exactly once
+        verify(response, times(1)).sendRedirect(anyString());
+    }
+
+    @Test
+    void testHandleTooManyRequests() throws IOException {
+        TooManyRequestsException exception = new TooManyRequestsException("Server is busy");
+
+        when(request.getSession()).thenReturn(session);
+        when(request.getContextPath()).thenReturn("");
+
+        handler.handleTooManyRequests(exception, request, response);
+
+        verify(session).setAttribute("uploadError", "Server is busy");
+        verify(response).sendRedirect("/");
+    }
+
+    @Test
+    void testHandleTooManyRequestsWithContextPath() throws IOException {
+        TooManyRequestsException exception = new TooManyRequestsException("Too many concurrent requests");
+
+        when(request.getSession()).thenReturn(session);
+        when(request.getContextPath()).thenReturn("/myapp");
+
+        handler.handleTooManyRequests(exception, request, response);
+
+        verify(session).setAttribute("uploadError", "Too many concurrent requests");
+        verify(response).sendRedirect("/myapp/");
+    }
+
+    @Test
+    void testHandleFileSizeExceeded() throws IOException {
+        FileSizeExceededException exception = new FileSizeExceededException("Excel file size (200.00 KB) exceeds the maximum limit of 128 KB.");
+
+        when(request.getSession()).thenReturn(session);
+        when(request.getContextPath()).thenReturn("");
+
+        handler.handleFileSizeExceeded(exception, request, response);
+
+        verify(session).setAttribute("uploadError", "Excel file size (200.00 KB) exceeds the maximum limit of 128 KB.");
+        verify(response).sendRedirect("/");
+    }
+
+    @Test
+    void testHandleFileSizeExceededForZip() throws IOException {
+        FileSizeExceededException exception = new FileSizeExceededException("ZIP file size (3.50 MB) exceeds the maximum limit of 2.00 MB.");
+
+        when(request.getSession()).thenReturn(session);
+        when(request.getContextPath()).thenReturn("/app");
+
+        handler.handleFileSizeExceeded(exception, request, response);
+
+        verify(session).setAttribute("uploadError", "ZIP file size (3.50 MB) exceeds the maximum limit of 2.00 MB.");
+        verify(response).sendRedirect("/app/");
+    }
+
+    @Test
+    void testHandleFileSizeExceededCallsSessionAndResponse() throws IOException {
+        FileSizeExceededException exception = new FileSizeExceededException("File too large");
+
+        when(request.getSession()).thenReturn(session);
+        when(request.getContextPath()).thenReturn("");
+
+        handler.handleFileSizeExceeded(exception, request, response);
 
         // Verify that session.setAttribute is called exactly once
         verify(session, times(1)).setAttribute(anyString(), anyString());
