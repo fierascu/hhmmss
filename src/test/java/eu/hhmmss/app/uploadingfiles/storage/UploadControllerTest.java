@@ -39,6 +39,9 @@ class UploadControllerTest {
     @MockBean
     private PdfService pdfService;
 
+    @MockBean
+    private ThrottlingService throttlingService;
+
     @Test
     void testListUploadedFiles() throws Exception {
         when(uploadService.loadAll()).thenReturn(Stream.of(
@@ -361,5 +364,169 @@ class UploadControllerTest {
         verify(uploadService).store(file);
         verify(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
         verify(pdfService).convertDocToPdf(any(Path.class), any(Path.class));
+    }
+
+    @Test
+    void testHandleFileUploadWithOversizedXlsxFile() throws Exception {
+        // Create a file that exceeds 128KB limit
+        byte[] largeContent = new byte[132 * 1024]; // 132KB
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "large.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                largeContent
+        );
+
+        // File size validation happens before store is called
+        mockMvc.perform(multipart("/")
+                        .file(file))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attributeExists("errorMessage"))
+                .andExpect(flash().attribute("errorMessage", containsString("Excel file size")))
+                .andExpect(flash().attribute("errorMessage", containsString("exceeds the maximum limit of 128 KB")));
+
+        // Store should never be called because validation fails first
+        verify(uploadService, never()).store(any());
+    }
+
+    @Test
+    void testHandleFileUploadWithOversizedZipFile() throws Exception {
+        // Create a file that exceeds 2MB limit
+        byte[] largeContent = new byte[3 * 1024 * 1024]; // 3MB
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "large.zip",
+                "application/zip",
+                largeContent
+        );
+
+        // File size validation happens before store is called
+        mockMvc.perform(multipart("/")
+                        .file(file))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attributeExists("errorMessage"))
+                .andExpect(flash().attribute("errorMessage", containsString("ZIP file size")))
+                .andExpect(flash().attribute("errorMessage", containsString("exceeds the maximum limit of 2.00 MB")));
+
+        // Store should never be called because validation fails first
+        verify(uploadService, never()).store(any());
+    }
+
+    @Test
+    void testHandleFileUploadWithValidSizedXlsxFile() throws Exception {
+        // Create a file within 128KB limit
+        byte[] validContent = new byte[100 * 1024]; // 100KB
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "valid.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                validContent
+        );
+
+        when(uploadService.store(any())).thenReturn("uuid-12345.xlsx");
+        when(uploadService.load("uuid-12345.xlsx")).thenReturn(Paths.get("/tmp/test.xlsx"));
+
+        // File should pass size validation
+        mockMvc.perform(multipart("/")
+                        .file(file))
+                .andExpect(status().is3xxRedirection());
+
+        verify(uploadService).store(file);
+    }
+
+    @Test
+    void testHandleFileUploadWithValidSizedZipFile() throws Exception {
+        // Create a file within 2MB limit
+        byte[] validContent = new byte[1024 * 1024]; // 1MB
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "valid.zip",
+                "application/zip",
+                validContent
+        );
+
+        when(uploadService.store(any())).thenReturn("uuid-12345.zip");
+        when(uploadService.load("uuid-12345.zip")).thenReturn(Paths.get("/tmp/test.zip"));
+
+        // File should pass size validation
+        mockMvc.perform(multipart("/")
+                        .file(file))
+                .andExpect(status().is3xxRedirection());
+
+        verify(uploadService).store(file);
+    }
+
+    @Test
+    void testThrottlingServiceAcquireAndReleasePermit() throws Exception {
+        // Test that throttling service is called
+        byte[] content = new byte[1024];
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                content
+        );
+
+        when(uploadService.store(any())).thenReturn("uuid-12345.xlsx");
+        when(uploadService.load("uuid-12345.xlsx")).thenReturn(Paths.get("/tmp/test.xlsx"));
+
+        mockMvc.perform(multipart("/")
+                        .file(file))
+                .andExpect(status().is3xxRedirection());
+
+        // Verify acquirePermit and releasePermit were called
+        verify(throttlingService, times(1)).acquirePermit();
+        verify(throttlingService, times(1)).releasePermit();
+    }
+
+    @Test
+    void testThrottlingServiceReleasesPermitOnException() throws Exception {
+        byte[] content = new byte[1024];
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                content
+        );
+
+        // Make store throw an exception
+        when(uploadService.store(any())).thenThrow(new StorageException("Storage error"));
+
+        mockMvc.perform(multipart("/")
+                        .file(file))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attributeExists("errorMessage"));
+
+        // Verify permit is released even when exception occurs
+        verify(throttlingService, times(1)).acquirePermit();
+        verify(throttlingService, times(1)).releasePermit();
+    }
+
+    @Test
+    void testThrottlingServiceTooManyRequests() throws Exception {
+        byte[] content = new byte[1024];
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                content
+        );
+
+        // Make acquirePermit throw TooManyRequestsException
+        doThrow(new TooManyRequestsException("Server is busy"))
+                .when(throttlingService).acquirePermit();
+
+        mockMvc.perform(multipart("/")
+                        .file(file))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"));
+
+        // Verify acquirePermit was called but store was never called
+        verify(throttlingService, times(1)).acquirePermit();
+        verify(uploadService, never()).store(any());
+        // releasePermit should not be called when acquirePermit throws
+        verify(throttlingService, never()).releasePermit();
     }
 }
