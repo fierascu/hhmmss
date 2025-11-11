@@ -28,6 +28,7 @@ Thumbs.db
 Dockerfile
 docker-compose.yml
 .dockerignore
+fly.toml
 
 # Documentation
 README.md
