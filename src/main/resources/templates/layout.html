@@ -339,6 +339,27 @@
             content: ' ---';
         }
 
+        .theme-switch {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .theme-switch a {
+            color: var(--link-color);
+            text-decoration: none;
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--terminal-border);
+            transition: all 0.2s ease;
+            display: inline-block;
+        }
+
+        .theme-switch a:hover {
+            background-color: rgba(0, 255, 65, 0.1);
+            box-shadow: 0 0 10px var(--terminal-shadow);
+            color: var(--link-hover);
+        }
+
         @keyframes fadeInDown {
             from {
                 opacity: 0;
@@ -390,6 +411,10 @@
 
 <body>
     <div class="container">
+        <div class="theme-switch">
+            <a href="/?theme=classic">Switch to Classic Theme</a>
+        </div>
+
         <div class="header">
             <h1>HH:MM:SS</h1>
             <p>Timesheet Converter v1.0</p>

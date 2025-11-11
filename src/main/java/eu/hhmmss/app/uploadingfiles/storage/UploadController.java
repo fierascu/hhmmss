@@ -35,13 +35,17 @@ public class UploadController {
     private final PdfService pdfService;
 
     @GetMapping("/")
-    public String listUploadedFiles(Model model, HttpSession session) {
+    public String listUploadedFiles(@RequestParam(required = false) String theme,
+                                    Model model, HttpSession session) {
         // Check for upload error in session
         String uploadError = (String) session.getAttribute("uploadError");
         if (uploadError != null) {
             model.addAttribute("errorMessage", uploadError);
             session.removeAttribute("uploadError");
         }
+
+        // Set theme (default is terminal, classic is alternative)
+        model.addAttribute("theme", "classic".equals(theme) ? "classic" : "terminal");
 
         model.addAttribute("files", uploadService.loadAll()
                 .map(path -> MvcUriComponentsBuilder.fromMethodName(
@@ -67,6 +71,7 @@ public class UploadController {
 
     @PostMapping("/")
     public String handleFileUpload(@RequestParam("file") MultipartFile file,
+                                   @RequestParam(required = false) String theme,
                                    RedirectAttributes redirectAttributes) {
         try {
             // Step 1: Store the uploaded file
@@ -78,9 +83,9 @@ public class UploadController {
 
             // Check if the file is a ZIP archive
             if (isZipFile(originalFilename)) {
-                return handleZipFile(uploadedFilePath, originalFilename, redirectAttributes);
+                return handleZipFile(uploadedFilePath, originalFilename, theme, redirectAttributes);
             } else {
-                return handleExcelFile(uploadedFilePath, uuidFilename, originalFilename, redirectAttributes);
+                return handleExcelFile(uploadedFilePath, uuidFilename, originalFilename, theme, redirectAttributes);
             }
 
         } catch (StorageException e) {
@@ -97,14 +102,18 @@ public class UploadController {
             redirectAttributes.addFlashAttribute("errorMessage", "An unexpected error occurred: " + e.getMessage());
         }
 
-        return "redirect:/";
+        return buildRedirectUrl(theme);
+    }
+
+    private String buildRedirectUrl(String theme) {
+        return "classic".equals(theme) ? "redirect:/?theme=classic" : "redirect:/";
     }
 
     /**
      * Handles processing of a single Excel file.
      */
     private String handleExcelFile(Path uploadedFilePath, String uuidFilename, String originalFilename,
-                                    RedirectAttributes redirectAttributes) throws IOException, OfficeException {
+                                    String theme, RedirectAttributes redirectAttributes) throws IOException, OfficeException {
         // Step 2: Parse the uploaded XLS file
         HhmmssDto extractedData = XlsService.readTimesheet(uploadedFilePath);
         log.info("Extracted data from uploaded file: {} tasks, {} meta fields",
@@ -149,13 +158,13 @@ public class UploadController {
         redirectAttributes.addFlashAttribute("successMessage",
                 "File processed successfully! Extracted " + extractedData.getTasks().size() + " tasks and generated PDFs.");
 
-        return "redirect:/";
+        return buildRedirectUrl(theme);
     }
 
     /**
      * Handles processing of a ZIP file containing multiple Excel files.
      */
-    private String handleZipFile(Path zipFilePath, String originalFilename,
+    private String handleZipFile(Path zipFilePath, String originalFilename, String theme,
                                   RedirectAttributes redirectAttributes) throws IOException {
         log.info("Processing ZIP file: {}", originalFilename);
 
@@ -192,7 +201,7 @@ public class UploadController {
         redirectAttributes.addFlashAttribute("processedFiles", result.processedFiles());
         redirectAttributes.addFlashAttribute("failedFiles", result.failedFiles());
 
-        return "redirect:/";
+        return buildRedirectUrl(theme);
     }
 
     /**

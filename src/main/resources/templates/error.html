@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org"
-      th:replace="~{layout :: layout(title='Error', content=~{::content})}">
+      th:replace="~{${theme == 'classic' ? 'layout-classic' : 'layout'} :: layout(title='Error', content=~{::content})}">
 
 <th:block th:fragment="content">
     <!-- Error Header -->
@@ -25,7 +25,7 @@
     </div>
 
     <!-- Back to Home Button -->
-    <a href="/" class="btn btn-primary">
+    <a th:href="${theme == 'classic' ? '/?theme=classic' : '/'}" class="btn btn-primary">
         Back to Home
     </a>
 </th:block>

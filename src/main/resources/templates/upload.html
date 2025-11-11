@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org"
-      th:replace="~{layout :: layout(title='Upload Timesheet', content=~{::content})}">
+      th:replace="~{${theme == 'classic' ? 'layout-classic' : 'layout'} :: layout(title='Upload Timesheet', content=~{::content})}">
 
 <th:block th:fragment="content">
     <!-- Error Message -->
@@ -33,19 +33,19 @@
 
         <div style="margin-top: 1rem;">
             <!-- ZIP result: Single download button -->
-            <a th:if="${isZipResult}" th:href="@{'/files/' + ${extractedFilename}}" class="btn btn-success">
+            <a th:if="${isZipResult}" th:href="@{/files/{filename}(filename=${extractedFilename})}" class="btn btn-success">
                 Download All Timesheets (ZIP)
             </a>
 
             <!-- Single file result: Multiple download buttons for DOCX and PDFs -->
             <div th:if="${!isZipResult}">
-                <a th:href="@{'/files/' + ${extractedFilename}}" class="btn btn-success">
+                <a th:href="@{/files/{filename}(filename=${extractedFilename})}" class="btn btn-success">
                     Download Timesheet (DOCX)
                 </a>
-                <a th:if="${docPdfFilename}" th:href="@{'/files/' + ${docPdfFilename}}" class="btn btn-primary" style="margin-left: 0.5rem;">
+                <a th:if="${docPdfFilename}" th:href="@{/files/{filename}(filename=${docPdfFilename})}" class="btn btn-primary" style="margin-left: 0.5rem;">
                     Download Timesheet (PDF)
                 </a>
-                <a th:if="${xlsPdfFilename}" th:href="@{'/files/' + ${xlsPdfFilename}}" class="btn btn-secondary" style="margin-left: 0.5rem;">
+                <a th:if="${xlsPdfFilename}" th:href="@{/files/{filename}(filename=${xlsPdfFilename})}" class="btn btn-secondary" style="margin-left: 0.5rem;">
                     Download Input Excel (PDF)
                 </a>
             </div>
@@ -53,7 +53,7 @@
     </div>
 
     <!-- Upload Form -->
-    <form action="/" enctype="multipart/form-data" method="POST">
+    <form th:action="${theme == 'classic' ? '/?theme=classic' : '/'}" enctype="multipart/form-data" method="POST">
         <div class="form-group">
             <label for="fileInput">Select Excel Timesheet or ZIP file</label>
             <input id="fileInput" name="file" type="file"
