@@ -340,24 +340,20 @@
         }
 
         .theme-switch {
-            text-align: center;
-            margin-bottom: 1rem;
+            margin-top: 0.75rem;
+            font-size: 0.75rem;
+            opacity: 0.6;
         }
 
         .theme-switch a {
-            color: var(--link-color);
+            color: var(--muted-color);
             text-decoration: none;
-            font-size: 0.875rem;
-            padding: 0.5rem 1rem;
-            border: 1px solid var(--terminal-border);
-            transition: all 0.2s ease;
-            display: inline-block;
+            transition: opacity 0.2s ease;
         }
 
         .theme-switch a:hover {
-            background-color: rgba(0, 255, 65, 0.1);
-            box-shadow: 0 0 10px var(--terminal-shadow);
-            color: var(--link-hover);
+            opacity: 1;
+            text-decoration: underline;
         }
 
         @keyframes fadeInDown {
@@ -411,10 +407,6 @@
 
 <body>
     <div class="container">
-        <div class="theme-switch">
-            <a href="/?theme=classic">Switch to Classic Theme</a>
-        </div>
-
         <div class="header">
             <h1>HH:MM:SS</h1>
             <p>Timesheet Converter v1.0</p>
@@ -426,6 +418,9 @@
 
         <div class="footer">
             <p>XLSX to DOCX conversion utility</p>
+            <div class="theme-switch">
+                <a href="/?theme=classic">classic theme</a>
+            </div>
         </div>
     </div>
 </body>
