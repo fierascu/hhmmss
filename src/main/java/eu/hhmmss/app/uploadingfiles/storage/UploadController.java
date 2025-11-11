@@ -83,7 +83,7 @@ public class UploadController {
 
             // Check if the file is a ZIP archive
             if (isZipFile(originalFilename)) {
-                return handleZipFile(uploadedFilePath, originalFilename, theme, redirectAttributes);
+                return handleZipFile(uploadedFilePath, uuidFilename, originalFilename, theme, redirectAttributes);
             } else {
                 return handleExcelFile(uploadedFilePath, uuidFilename, originalFilename, theme, redirectAttributes);
             }
@@ -121,7 +121,8 @@ public class UploadController {
                 extractedData.getMeta().size());
 
         // Step 3: Generate DOCX with extracted data
-        String extractedFilename = "timesheet_" + UUID.randomUUID() + ".docx";
+        // Maintain traceability: use input filename as base for output files
+        String extractedFilename = uuidFilename + ".docx";
         Path extractedFilePath = uploadService.load(extractedFilename);
 
         // Copy template to temporary location
@@ -137,13 +138,15 @@ public class UploadController {
         Files.deleteIfExists(tempTemplate);
 
         // Step 4: Generate PDF from input XLS (1:1 print)
-        String xlsPdfFilename = "input_" + UUID.randomUUID() + ".pdf";
+        // Traceability: UUID-hash-originalExtension.pdf
+        String xlsPdfFilename = uuidFilename + ".pdf";
         Path xlsPdfPath = uploadService.load(xlsPdfFilename);
         pdfService.convertXlsToPdf(uploadedFilePath, xlsPdfPath);
         log.info("Generated PDF from input XLS as: {}", xlsPdfFilename);
 
         // Step 5: Generate PDF from output DOC (1:1 print)
-        String docPdfFilename = "output_" + UUID.randomUUID() + ".pdf";
+        // Traceability: UUID-hash-originalExtension.docx.pdf
+        String docPdfFilename = extractedFilename + ".pdf";
         Path docPdfPath = uploadService.load(docPdfFilename);
         pdfService.convertDocToPdf(extractedFilePath, docPdfPath);
         log.info("Generated PDF from output DOC as: {}", docPdfFilename);
@@ -164,7 +167,7 @@ public class UploadController {
     /**
      * Handles processing of a ZIP file containing multiple Excel files.
      */
-    private String handleZipFile(Path zipFilePath, String originalFilename, String theme,
+    private String handleZipFile(Path zipFilePath, String uuidFilename, String originalFilename, String theme,
                                   RedirectAttributes redirectAttributes) throws IOException {
         log.info("Processing ZIP file: {}", originalFilename);
 
@@ -176,9 +179,9 @@ public class UploadController {
         // Get output directory (same as upload directory)
         Path outputDir = zipFilePath.getParent();
 
-        // Process ZIP file
+        // Process ZIP file with traceability
         ZipProcessingService.ZipProcessingResult result = zipProcessingService.processZipFile(
-                zipFilePath, tempTemplate, outputDir
+                zipFilePath, uuidFilename, tempTemplate, outputDir
         );
 
         // Clean up temp template

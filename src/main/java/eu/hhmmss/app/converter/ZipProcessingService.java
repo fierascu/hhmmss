@@ -27,12 +27,13 @@ public class ZipProcessingService {
      * Processes a ZIP file containing multiple Excel timesheets.
      *
      * @param zipPath Path to the uploaded ZIP file
+     * @param uploadedZipFilename Original uploaded filename (with UUID-hash for traceability)
      * @param templatePath Path to the DOCX template
      * @param outputDir Directory where output files will be stored
      * @return ZipProcessingResult containing the result ZIP path and processing stats
      * @throws StorageException if processing fails
      */
-    public ZipProcessingResult processZipFile(Path zipPath, Path templatePath, Path outputDir) {
+    public ZipProcessingResult processZipFile(Path zipPath, String uploadedZipFilename, Path templatePath, Path outputDir) {
         List<Path> convertedFiles = new ArrayList<>();
         List<String> processedFileNames = new ArrayList<>();
         List<String> failedFileNames = new ArrayList<>();
@@ -86,7 +87,8 @@ public class ZipProcessingService {
             }
 
             // Create result ZIP with all converted DOCX files
-            String resultZipName = "timesheets_" + UUID.randomUUID() + ".zip";
+            // Maintain traceability: use uploaded filename as base for result ZIP
+            String resultZipName = uploadedZipFilename + "-result.zip";
             Path resultZipPath = outputDir.resolve(resultZipName);
             createZipFile(convertedFiles, resultZipPath);
 
