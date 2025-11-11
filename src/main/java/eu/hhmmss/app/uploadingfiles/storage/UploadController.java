@@ -33,6 +33,7 @@ public class UploadController {
     private final UploadService uploadService;
     private final ZipProcessingService zipProcessingService;
     private final PdfService pdfService;
+    private final ThrottlingService throttlingService;
 
     @GetMapping("/")
     public String listUploadedFiles(@RequestParam(required = false) String theme,
@@ -73,6 +74,9 @@ public class UploadController {
     public String handleFileUpload(@RequestParam("file") MultipartFile file,
                                    @RequestParam(required = false) String theme,
                                    RedirectAttributes redirectAttributes) {
+        // Acquire permit for throttling - throws TooManyRequestsException if unavailable
+        throttlingService.acquirePermit();
+
         try {
             // Step 1: Store the uploaded file
             String uuidFilename = uploadService.store(file);
@@ -100,6 +104,9 @@ public class UploadController {
         } catch (Exception e) {
             log.error("Unexpected error during file processing", e);
             redirectAttributes.addFlashAttribute("errorMessage", "An unexpected error occurred: " + e.getMessage());
+        } finally {
+            // Always release the permit, even if an exception occurred
+            throttlingService.releasePermit();
         }
 
         return buildRedirectUrl(theme);

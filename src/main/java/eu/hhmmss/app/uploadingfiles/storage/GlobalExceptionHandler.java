@@ -17,6 +17,19 @@ import java.time.LocalDateTime;
 @Slf4j
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    public void handleTooManyRequests(TooManyRequestsException exc,
+                                      HttpServletRequest request,
+                                      HttpServletResponse response) throws IOException {
+        log.warn("Handling TooManyRequestsException: {}", exc.getMessage());
+
+        // Store error in session
+        request.getSession().setAttribute("uploadError", exc.getMessage());
+
+        // Send redirect
+        response.sendRedirect(request.getContextPath() + "/");
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public void handleMaxSizeException(MaxUploadSizeExceededException exc,
                                        HttpServletRequest request,
