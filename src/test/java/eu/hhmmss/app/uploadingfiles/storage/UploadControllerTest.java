@@ -125,24 +125,12 @@ class UploadControllerTest {
 
         when(uploadService.store(any())).thenReturn("uuid-12345.xlsx");
         when(uploadService.load("uuid-12345.xlsx")).thenReturn(testXlsPath);
-        when(uploadService.load(argThat(filename ->
-                filename != null && filename.startsWith("timesheet_") && filename.endsWith(".docx"))))
-                .thenAnswer(invocation -> {
-                    String filename = invocation.getArgument(0);
-                    return Paths.get("/tmp/uploads/" + filename);
-                });
-        when(uploadService.load(argThat(filename ->
-                filename != null && filename.startsWith("input_") && filename.endsWith(".pdf"))))
-                .thenAnswer(invocation -> {
-                    String filename = invocation.getArgument(0);
-                    return Paths.get("/tmp/uploads/" + filename);
-                });
-        when(uploadService.load(argThat(filename ->
-                filename != null && filename.startsWith("output_") && filename.endsWith(".pdf"))))
-                .thenAnswer(invocation -> {
-                    String filename = invocation.getArgument(0);
-                    return Paths.get("/tmp/uploads/" + filename);
-                });
+        when(uploadService.load("uuid-12345.xlsx.docx"))
+                .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.docx"));
+        when(uploadService.load("uuid-12345.xlsx.pdf"))
+                .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.pdf"));
+        when(uploadService.load("uuid-12345.xlsx.docx.pdf"))
+                .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.docx.pdf"));
 
         // Mock PDF service
         doNothing().when(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
@@ -287,18 +275,10 @@ class UploadControllerTest {
 
         when(uploadService.store(any())).thenReturn("uuid-12345.xlsx");
         when(uploadService.load("uuid-12345.xlsx")).thenReturn(testXlsPath);
-        when(uploadService.load(argThat(filename ->
-                filename != null && filename.startsWith("timesheet_") && filename.endsWith(".docx"))))
-                .thenAnswer(invocation -> {
-                    String filename = invocation.getArgument(0);
-                    return Paths.get("/tmp/uploads/" + filename);
-                });
-        when(uploadService.load(argThat(filename ->
-                filename != null && filename.startsWith("input_") && filename.endsWith(".pdf"))))
-                .thenAnswer(invocation -> {
-                    String filename = invocation.getArgument(0);
-                    return Paths.get("/tmp/uploads/" + filename);
-                });
+        when(uploadService.load("uuid-12345.xlsx.docx"))
+                .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.docx"));
+        when(uploadService.load("uuid-12345.xlsx.pdf"))
+                .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.pdf"));
 
         // Mock PDF service to throw exception
         doThrow(new RuntimeException("PDF conversion failed")).when(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
@@ -330,24 +310,12 @@ class UploadControllerTest {
 
         when(uploadService.store(any())).thenReturn("uuid-12345.xlsx");
         when(uploadService.load("uuid-12345.xlsx")).thenReturn(testXlsPath);
-        when(uploadService.load(argThat(filename ->
-                filename != null && filename.startsWith("timesheet_") && filename.endsWith(".docx"))))
-                .thenAnswer(invocation -> {
-                    String filename = invocation.getArgument(0);
-                    return Paths.get("/tmp/uploads/" + filename);
-                });
-        when(uploadService.load(argThat(filename ->
-                filename != null && filename.startsWith("input_") && filename.endsWith(".pdf"))))
-                .thenAnswer(invocation -> {
-                    String filename = invocation.getArgument(0);
-                    return Paths.get("/tmp/uploads/" + filename);
-                });
-        when(uploadService.load(argThat(filename ->
-                filename != null && filename.startsWith("output_") && filename.endsWith(".pdf"))))
-                .thenAnswer(invocation -> {
-                    String filename = invocation.getArgument(0);
-                    return Paths.get("/tmp/uploads/" + filename);
-                });
+        when(uploadService.load("uuid-12345.xlsx.docx"))
+                .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.docx"));
+        when(uploadService.load("uuid-12345.xlsx.pdf"))
+                .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.pdf"));
+        when(uploadService.load("uuid-12345.xlsx.docx.pdf"))
+                .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.docx.pdf"));
 
         // Mock PDF service - XLS to PDF succeeds, DOC to PDF fails
         doNothing().when(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));

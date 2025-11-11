@@ -4,6 +4,9 @@ import eu.hhmmss.app.uploadingfiles.storage.StorageException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -15,7 +18,11 @@ import java.util.zip.ZipOutputStream;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@ExtendWith(MockitoExtension.class)
 class ZipProcessingServiceTest {
+
+    @Mock
+    private PdfService pdfService;
 
     private ZipProcessingService zipProcessingService;
     private Path tempDir;
@@ -23,7 +30,7 @@ class ZipProcessingServiceTest {
 
     @BeforeEach
     void setUp() throws IOException {
-        zipProcessingService = new ZipProcessingService();
+        zipProcessingService = new ZipProcessingService(pdfService);
         tempDir = Files.createTempDirectory("zip-test-");
 
         // Create a mock template file (we won't actually use it for conversion in tests)
@@ -52,7 +59,7 @@ class ZipProcessingServiceTest {
         // For now, we're just testing that the service attempts to process the files.
 
         assertThrows(Exception.class, () -> {
-            zipProcessingService.processZipFile(zipPath, templatePath, tempDir);
+            zipProcessingService.processZipFile(zipPath, "test.zip", templatePath, tempDir);
         }, "Should throw exception when trying to process invalid Excel content");
     }
 
@@ -70,7 +77,7 @@ class ZipProcessingServiceTest {
 
         // Should throw exception because no Excel files found
         StorageException exception = assertThrows(StorageException.class, () -> {
-            zipProcessingService.processZipFile(zipPath, templatePath, tempDir);
+            zipProcessingService.processZipFile(zipPath, "no-excel.zip", templatePath, tempDir);
         });
 
         assertTrue(exception.getMessage().contains("No Excel files found"));
@@ -86,7 +93,7 @@ class ZipProcessingServiceTest {
 
         // Should throw exception because no Excel files found
         StorageException exception = assertThrows(StorageException.class, () -> {
-            zipProcessingService.processZipFile(zipPath, templatePath, tempDir);
+            zipProcessingService.processZipFile(zipPath, "empty.zip", templatePath, tempDir);
         });
 
         assertTrue(exception.getMessage().contains("No Excel files found"));
@@ -124,7 +131,7 @@ class ZipProcessingServiceTest {
         // Should attempt to process all 3 Excel files
         // Will fail during actual conversion, but we're testing the extraction logic
         assertThrows(Exception.class, () -> {
-            zipProcessingService.processZipFile(zipPath, templatePath, tempDir);
+            zipProcessingService.processZipFile(zipPath, "nested.zip", templatePath, tempDir);
         }, "Should find and attempt to process all nested Excel files");
     }
 
@@ -158,7 +165,7 @@ class ZipProcessingServiceTest {
 
         // Should only attempt to process the 2 Excel files, ignoring txt and pdf
         assertThrows(Exception.class, () -> {
-            zipProcessingService.processZipFile(zipPath, templatePath, tempDir);
+            zipProcessingService.processZipFile(zipPath, "mixed.zip", templatePath, tempDir);
         }, "Should only process Excel files and ignore others");
     }
 
@@ -176,7 +183,7 @@ class ZipProcessingServiceTest {
 
         // Should throw StorageException due to path traversal protection
         assertThrows(StorageException.class, () -> {
-            zipProcessingService.processZipFile(zipPath, templatePath, tempDir);
+            zipProcessingService.processZipFile(zipPath, "malicious.zip", templatePath, tempDir);
         }, "Should prevent path traversal attacks");
     }
 
@@ -202,7 +209,7 @@ class ZipProcessingServiceTest {
 
         // Should handle special characters in filenames
         assertThrows(Exception.class, () -> {
-            zipProcessingService.processZipFile(zipPath, templatePath, tempDir);
+            zipProcessingService.processZipFile(zipPath, "special-chars.zip", templatePath, tempDir);
         }, "Should handle filenames with special characters");
     }
 
@@ -238,7 +245,7 @@ class ZipProcessingServiceTest {
 
         // Should recognize and attempt to process all 4 formats
         assertThrows(Exception.class, () -> {
-            zipProcessingService.processZipFile(zipPath, templatePath, tempDir);
+            zipProcessingService.processZipFile(zipPath, "all-formats.zip", templatePath, tempDir);
         }, "Should recognize all supported Excel formats");
     }
 
