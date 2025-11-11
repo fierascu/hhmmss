@@ -283,6 +283,10 @@ public class UploadController {
                 String actualSizeMB = String.format(java.util.Locale.US, "%.2f", fileSize / (1024.0 * 1024.0));
                 throw new FileSizeExceededException(
                         String.format("ZIP file size (%s MB) exceeds the maximum limit of %s MB",
+                String maxSizeMB = String.format("%.2f", maxZipSize / (1024.0 * 1024.0));
+                String actualSizeMB = String.format("%.2f", fileSize / (1024.0 * 1024.0));
+                throw new FileSizeExceededException(
+                        String.format("ZIP file size (%s MB) exceeds the maximum limit of %s MB.",
                                 actualSizeMB, maxSizeMB));
             }
             log.debug("ZIP file size validation passed: {} bytes (max: {} bytes)", fileSize, maxZipSize);
@@ -293,6 +297,10 @@ public class UploadController {
                 String actualSizeKB = String.format(java.util.Locale.US, "%.2f", fileSize / 1024.0);
                 throw new FileSizeExceededException(
                         String.format("Excel file size (%s KB) exceeds the maximum limit of %s KB",
+                String maxSizeKB = String.format("%.0f", maxXlsxSize / 1024.0);
+                String actualSizeKB = String.format("%.2f", fileSize / 1024.0);
+                throw new FileSizeExceededException(
+                        String.format("Excel file size (%s KB) exceeds the maximum limit of %s KB.",
                                 actualSizeKB, maxSizeKB));
             }
             log.debug("XLSX file size validation passed: {} bytes (max: {} bytes)", fileSize, maxXlsxSize);
