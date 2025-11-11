@@ -31,25 +31,6 @@
             </div>
         </div>
 
-        <div style="margin-top: 1rem;">
-            <!-- ZIP result: Single download button -->
-            <a th:if="${isZipResult}" th:href="@{/files/{filename}(filename=${extractedFilename})}" class="btn btn-success">
-                Download All Timesheets (ZIP)
-            </a>
-
-            <!-- Single file result: Multiple download buttons for DOCX and PDFs -->
-            <div th:if="${!isZipResult}">
-                <a th:href="@{/files/{filename}(filename=${extractedFilename})}" class="btn btn-success">
-                    Download Timesheet (DOCX)
-                </a>
-                <a th:if="${docPdfFilename}" th:href="@{/files/{filename}(filename=${docPdfFilename})}" class="btn btn-primary" style="margin-left: 0.5rem;">
-                    Download Timesheet (PDF)
-                </a>
-                <a th:if="${xlsPdfFilename}" th:href="@{/files/{filename}(filename=${xlsPdfFilename})}" class="btn btn-secondary" style="margin-left: 0.5rem;">
-                    Download Input Excel (PDF)
-                </a>
-            </div>
-        </div>
     </div>
 
     <!-- Upload Form -->
@@ -86,12 +67,12 @@
         });
     </script>
 
-    <!-- File List -->
-    <div th:if="${files != null and !#lists.isEmpty(files)}" class="file-list">
-        <h3>Previously Converted Files</h3>
+    <!-- Generated Files from Current Conversion -->
+    <div th:if="${generatedFiles != null and !#lists.isEmpty(generatedFiles)}" class="file-list">
+        <h3>Generated Files</h3>
         <ul>
-            <li th:each="file : ${files}">
-                <a th:href="${file}" th:text="${file}"></a>
+            <li th:each="file, iterStat : ${generatedFiles}">
+                <a th:href="${generatedFileUrls[iterStat.index]}" th:text="${file}"></a>
             </li>
         </ul>
     </div>
