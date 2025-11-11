@@ -2,19 +2,16 @@ package eu.hhmmss.app.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jodconverter.core.DocumentConverter;
-import org.jodconverter.core.office.OfficeException;
 import org.jodconverter.core.office.OfficeManager;
 import org.jodconverter.local.LocalConverter;
 import org.jodconverter.local.office.LocalOfficeManager;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.autoconfigure.jodconverter.JodConverterAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 import jakarta.annotation.PostConstruct;
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,11 +21,10 @@ import java.nio.file.Paths;
  * Validates the LibreOffice installation path during application startup
  * and provides clear error messages if the path is invalid.
  *
- * This configuration disables the default JodConverter auto-configuration
- * and provides a custom DocumentConverter bean that handles errors gracefully.
+ * This configuration provides custom beans that handle errors gracefully,
+ * allowing the application to start even if LibreOffice is not properly configured.
  */
 @Configuration
-@EnableAutoConfiguration(exclude = JodConverterAutoConfiguration.class)
 @ConditionalOnProperty(name = "jodconverter.local.enabled", havingValue = "true", matchIfMissing = false)
 @Slf4j
 public class LibreOfficeConfig {
@@ -167,21 +163,22 @@ public class LibreOfficeConfig {
     }
 
     /**
-     * Creates the DocumentConverter bean with proper error handling.
+     * Creates the OfficeManager bean with proper error handling.
      * Returns null if LibreOffice is not properly configured, allowing the app to start.
      */
     @Bean
-    public DocumentConverter documentConverter() {
+    @Primary
+    public OfficeManager officeManager() {
         LibreOfficeStatus status = libreOfficeStatus();
 
         if (!status.isAvailable()) {
-            log.error("DocumentConverter bean will NOT be created due to LibreOffice configuration issues.");
+            log.error("OfficeManager bean will NOT be created due to LibreOffice configuration issues.");
             log.error("The application will start, but PDF conversion features will be unavailable.");
             return null;
         }
 
         try {
-            log.info("Creating DocumentConverter with LibreOffice at: {}", officeHome);
+            log.info("Creating OfficeManager with LibreOffice at: {}", officeHome);
 
             // Parse port numbers
             String[] ports = portNumbers.split(",");
@@ -202,15 +199,11 @@ public class LibreOfficeConfig {
             officeManager.start();
             log.info("OfficeManager started successfully");
 
-            // Create and return the DocumentConverter
-            DocumentConverter converter = LocalConverter.make(officeManager);
-            log.info("DocumentConverter created successfully");
-
-            return converter;
+            return officeManager;
 
         } catch (Exception e) {
             log.error("=".repeat(80));
-            log.error("FAILED TO CREATE DOCUMENTCONVERTER");
+            log.error("FAILED TO CREATE OFFICEMANAGER");
             log.error("=".repeat(80));
             log.error("An error occurred while initializing LibreOffice/JodConverter:", e);
             log.error("Error message: {}", e.getMessage());
@@ -218,6 +211,29 @@ public class LibreOfficeConfig {
             log.error("The application will start, but PDF conversion features will be unavailable.");
             log.error("Please verify your LibreOffice installation and configuration.");
             log.error("=".repeat(80));
+            return null;
+        }
+    }
+
+    /**
+     * Creates the DocumentConverter bean with proper error handling.
+     * Returns null if OfficeManager is not available, allowing the app to start.
+     */
+    @Bean
+    @Primary
+    public DocumentConverter documentConverter(OfficeManager officeManager) {
+        if (officeManager == null) {
+            log.error("DocumentConverter bean will NOT be created because OfficeManager is unavailable.");
+            return null;
+        }
+
+        try {
+            log.info("Creating DocumentConverter");
+            DocumentConverter converter = LocalConverter.make(officeManager);
+            log.info("DocumentConverter created successfully");
+            return converter;
+        } catch (Exception e) {
+            log.error("Failed to create DocumentConverter:", e);
             return null;
         }
     }
