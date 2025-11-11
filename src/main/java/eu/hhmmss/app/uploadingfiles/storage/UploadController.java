@@ -24,6 +24,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.UUID;
 
 @Controller
@@ -279,28 +280,20 @@ public class UploadController {
         if (isZipFile(filename)) {
             // ZIP file validation
             if (fileSize > maxZipSize) {
-                String maxSizeMB = String.format(java.util.Locale.US, "%.2f", maxZipSize / (1024.0 * 1024.0));
-                String actualSizeMB = String.format(java.util.Locale.US, "%.2f", fileSize / (1024.0 * 1024.0));
+                String maxSizeMB = String.format(Locale.US, "%.2f", maxZipSize / (1024.0 * 1024.0));
+                String actualSizeMB = String.format(Locale.US, "%.2f", fileSize / (1024.0 * 1024.0));
                 throw new FileSizeExceededException(
-                        String.format("ZIP file size (%s MB) exceeds the maximum limit of %s MB",
-                String maxSizeMB = String.format("%.2f", maxZipSize / (1024.0 * 1024.0));
-                String actualSizeMB = String.format("%.2f", fileSize / (1024.0 * 1024.0));
-                throw new FileSizeExceededException(
-                        String.format("ZIP file size (%s MB) exceeds the maximum limit of %s MB.",
+                        String.format(Locale.US, "ZIP file size (%s MB) exceeds the maximum limit of %s MB.",
                                 actualSizeMB, maxSizeMB));
             }
             log.debug("ZIP file size validation passed: {} bytes (max: {} bytes)", fileSize, maxZipSize);
         } else {
             // XLSX file validation
             if (fileSize > maxXlsxSize) {
-                String maxSizeKB = String.format(java.util.Locale.US, "%.0f", maxXlsxSize / 1024.0);
-                String actualSizeKB = String.format(java.util.Locale.US, "%.2f", fileSize / 1024.0);
+                String maxSizeKB = String.format(Locale.US, "%.0f", maxXlsxSize / 1024.0);
+                String actualSizeKB = String.format(Locale.US, "%.2f", fileSize / 1024.0);
                 throw new FileSizeExceededException(
-                        String.format("Excel file size (%s KB) exceeds the maximum limit of %s KB",
-                String maxSizeKB = String.format("%.0f", maxXlsxSize / 1024.0);
-                String actualSizeKB = String.format("%.2f", fileSize / 1024.0);
-                throw new FileSizeExceededException(
-                        String.format("Excel file size (%s KB) exceeds the maximum limit of %s KB.",
+                        String.format(Locale.US, "Excel file size (%s KB) exceeds the maximum limit of %s KB.",
                                 actualSizeKB, maxSizeKB));
             }
             log.debug("XLSX file size validation passed: {} bytes (max: {} bytes)", fileSize, maxXlsxSize);

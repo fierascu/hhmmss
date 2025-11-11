@@ -23,8 +23,13 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import org.springframework.test.context.TestPropertySource;
 
 @WebMvcTest(UploadController.class)
+@TestPropertySource(properties = {
+        "spring.servlet.multipart.max-file-size=10MB",
+        "spring.servlet.multipart.max-request-size=10MB"
+})
 class UploadControllerTest {
 
     @Autowired
