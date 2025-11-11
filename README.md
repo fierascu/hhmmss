@@ -210,6 +210,10 @@ mvn test -Dtest="*Selenium*"
 
 # Run specific Selenium test class
 mvn test -Dtest=UploadPageUiTest
+
+# Skip Selenium tests (useful in CI/CD without Chrome)
+mvn test -DskipSelenium
+mvn clean package -DskipSelenium
 ```
 
 **Headless Mode:**
@@ -217,6 +221,8 @@ By default, Selenium tests run in headless mode (no visible browser). To run wit
 ```bash
 SELENIUM_HEADLESS=false mvn test
 ```
+
+**Note:** Selenium tests require Chrome browser to be installed. If Chrome is not available, the tests will be automatically skipped with a message. Use `-DskipSelenium` to explicitly skip Selenium tests in environments without Chrome.
 
 **Test Coverage:**
 - **UI Elements**: Upload form, buttons, file input, labels

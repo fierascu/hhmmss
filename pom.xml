@@ -131,7 +131,32 @@
 					</excludes>
 				</configuration>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<!-- Skip Selenium tests if skipSelenium property is set -->
+					<excludes>
+						<exclude>${selenium.test.exclude}</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<!-- Profile to skip Selenium tests -->
+		<profile>
+			<id>skipSelenium</id>
+			<activation>
+				<property>
+					<name>skipSelenium</name>
+				</property>
+			</activation>
+			<properties>
+				<selenium.test.exclude>**/selenium/**/*Test.java</selenium.test.exclude>
+			</properties>
+		</profile>
+	</profiles>
 
 </project>
