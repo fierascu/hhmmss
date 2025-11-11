@@ -86,6 +86,19 @@
 			<artifactId>jodconverter-spring-boot-starter</artifactId>
 			<version>4.4.7</version>
 		</dependency>
+		<!-- Selenium WebDriver for E2E testing -->
+		<dependency>
+			<groupId>org.seleniumhq.selenium</groupId>
+			<artifactId>selenium-java</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- WebDriverManager for automatic driver management -->
+		<dependency>
+			<groupId>io.github.bonigarcia</groupId>
+			<artifactId>webdrivermanager</artifactId>
+			<version>5.9.2</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

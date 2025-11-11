@@ -180,7 +180,9 @@ http://localhost:8080
 
 ### Running Tests
 
-Execute the comprehensive test suite:
+#### Unit Tests
+
+Execute the comprehensive unit test suite:
 ```bash
 mvn test
 ```
@@ -189,6 +191,39 @@ Or with Docker:
 ```bash
 docker run --rm -v "$(pwd)":/build -w /build maven:3.9-eclipse-temurin-21-alpine mvn test
 ```
+
+#### Selenium E2E Tests
+
+The project includes Selenium WebDriver tests for end-to-end testing of the web interface.
+
+**Prerequisites:**
+- Chrome browser installed (ChromeDriver is managed automatically via WebDriverManager)
+- Application will be automatically started on a random port during tests
+
+**Running Selenium tests:**
+```bash
+# Run all tests including Selenium
+mvn test
+
+# Run only Selenium tests
+mvn test -Dtest="*Selenium*"
+
+# Run specific Selenium test class
+mvn test -Dtest=UploadPageUiTest
+```
+
+**Headless Mode:**
+By default, Selenium tests run in headless mode (no visible browser). To run with a visible browser:
+```bash
+SELENIUM_HEADLESS=false mvn test
+```
+
+**Test Coverage:**
+- **UI Elements**: Upload form, buttons, file input, labels
+- **Single File Upload**: Complete workflow from file selection to download
+- **ZIP Batch Processing**: Multi-file conversion and result ZIP generation
+- **Error Handling**: Invalid file types, oversized files, validation messages
+- **Real-time Validation**: Upload button state based on file selection
 
 ## Usage
 
@@ -242,15 +277,27 @@ docker run --rm -v "$(pwd)":/build -w /build maven:3.9-eclipse-temurin-21-alpine
 
 ## Testing
 
-The project includes extensive unit tests covering:
+The project includes comprehensive test coverage with both unit tests and end-to-end Selenium tests:
+
+### Unit Tests
 - Excel parsing (XlsService)
 - Word document generation (DocService)
 - ZIP batch processing (ZipProcessingService)
 - File validation (FileTypeValidator)
 - Upload handling (UploadService, UploadController)
 - Error handling (GlobalExceptionHandler)
+- File security and traceability (FileHasher, TimeBasedUuidGenerator)
+- Throttling service (ThrottlingService)
 
-Test coverage includes edge cases, error scenarios, and security validations.
+### Selenium E2E Tests
+- Upload page UI elements and validation
+- Single Excel file upload workflow
+- ZIP batch processing workflow
+- Error handling scenarios (invalid files, size limits)
+- Real-time form validation
+- File download functionality
+
+Test coverage includes edge cases, error scenarios, security validations, and complete user workflows.
 
 ## Security Considerations
 
