@@ -83,7 +83,7 @@ public class UploadController {
 
             // Check if the file is a ZIP archive
             if (isZipFile(originalFilename)) {
-                return handleZipFile(uploadedFilePath, originalFilename, theme, redirectAttributes);
+                return handleZipFile(uploadedFilePath, uuidFilename, originalFilename, theme, redirectAttributes);
             } else {
                 return handleExcelFile(uploadedFilePath, uuidFilename, originalFilename, theme, redirectAttributes);
             }
@@ -121,7 +121,8 @@ public class UploadController {
                 extractedData.getMeta().size());
 
         // Step 3: Generate DOCX with extracted data
-        String extractedFilename = "timesheet_" + UUID.randomUUID() + ".docx";
+        // Maintain traceability: use input filename as base for output files
+        String extractedFilename = uuidFilename + ".docx";
         Path extractedFilePath = uploadService.load(extractedFilename);
 
         // Copy template to temporary location
@@ -137,23 +138,41 @@ public class UploadController {
         Files.deleteIfExists(tempTemplate);
 
         // Step 4: Generate PDF from input XLS (1:1 print)
-        String xlsPdfFilename = "input_" + UUID.randomUUID() + ".pdf";
+        // Traceability: UUID-hash-originalExtension.pdf
+        String xlsPdfFilename = uuidFilename + ".pdf";
         Path xlsPdfPath = uploadService.load(xlsPdfFilename);
         pdfService.convertXlsToPdf(uploadedFilePath, xlsPdfPath);
         log.info("Generated PDF from input XLS as: {}", xlsPdfFilename);
 
         // Step 5: Generate PDF from output DOC (1:1 print)
-        String docPdfFilename = "output_" + UUID.randomUUID() + ".pdf";
+        // Traceability: UUID-hash-originalExtension.docx.pdf
+        String docPdfFilename = extractedFilename + ".pdf";
         Path docPdfPath = uploadService.load(docPdfFilename);
         pdfService.convertDocToPdf(extractedFilePath, docPdfPath);
         log.info("Generated PDF from output DOC as: {}", docPdfFilename);
 
-        // Pass all filenames to the view
+        // Build list of generated files for display
+        java.util.List<String> generatedFiles = new java.util.ArrayList<>();
+        generatedFiles.add(uuidFilename + " (Uploaded Excel)");
+        generatedFiles.add(extractedFilename + " (Generated Timesheet DOCX)");
+        generatedFiles.add(xlsPdfFilename + " (Input Excel as PDF)");
+        generatedFiles.add(docPdfFilename + " (Timesheet as PDF)");
+
+        // Build file URLs for download links
+        java.util.List<String> generatedFileUrls = new java.util.ArrayList<>();
+        generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
+                UploadController.class, "serveFile", uuidFilename).build().toUri().toString());
+        generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
+                UploadController.class, "serveFile", extractedFilename).build().toUri().toString());
+        generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
+                UploadController.class, "serveFile", xlsPdfFilename).build().toUri().toString());
+        generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
+                UploadController.class, "serveFile", docPdfFilename).build().toUri().toString());
+
+        // Pass data to the view
         redirectAttributes.addFlashAttribute("originalFilename", originalFilename);
-        redirectAttributes.addFlashAttribute("uuidFilename", uuidFilename);
-        redirectAttributes.addFlashAttribute("extractedFilename", extractedFilename);
-        redirectAttributes.addFlashAttribute("xlsPdfFilename", xlsPdfFilename);
-        redirectAttributes.addFlashAttribute("docPdfFilename", docPdfFilename);
+        redirectAttributes.addFlashAttribute("generatedFiles", generatedFiles);
+        redirectAttributes.addFlashAttribute("generatedFileUrls", generatedFileUrls);
         redirectAttributes.addFlashAttribute("isZipResult", false);
         redirectAttributes.addFlashAttribute("successMessage",
                 "File processed successfully! Extracted " + extractedData.getTasks().size() + " tasks and generated PDFs.");
@@ -164,7 +183,7 @@ public class UploadController {
     /**
      * Handles processing of a ZIP file containing multiple Excel files.
      */
-    private String handleZipFile(Path zipFilePath, String originalFilename, String theme,
+    private String handleZipFile(Path zipFilePath, String uuidFilename, String originalFilename, String theme,
                                   RedirectAttributes redirectAttributes) throws IOException {
         log.info("Processing ZIP file: {}", originalFilename);
 
@@ -176,9 +195,9 @@ public class UploadController {
         // Get output directory (same as upload directory)
         Path outputDir = zipFilePath.getParent();
 
-        // Process ZIP file
+        // Process ZIP file with traceability
         ZipProcessingService.ZipProcessingResult result = zipProcessingService.processZipFile(
-                zipFilePath, tempTemplate, outputDir
+                zipFilePath, uuidFilename, tempTemplate, outputDir
         );
 
         // Clean up temp template
@@ -187,15 +206,28 @@ public class UploadController {
         // Build success message
         StringBuilder message = new StringBuilder();
         message.append("ZIP file processed successfully! ");
-        message.append("Converted ").append(result.successCount()).append(" file(s).");
+        message.append("Converted ").append(result.successCount()).append(" file(s) to DOCX, Excel PDF, and Timesheet PDF.");
 
         if (result.failureCount() > 0) {
             message.append(" Failed: ").append(result.failureCount()).append(" file(s).");
         }
 
+        // Build list of generated files for display
+        java.util.List<String> generatedFiles = new java.util.ArrayList<>();
+        generatedFiles.add(uuidFilename + " (Uploaded ZIP)");
+        generatedFiles.add(result.resultZipFileName() + " (Converted Timesheets - DOCX + PDFs)");
+
+        // Build file URLs for download links
+        java.util.List<String> generatedFileUrls = new java.util.ArrayList<>();
+        generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
+                UploadController.class, "serveFile", uuidFilename).build().toUri().toString());
+        generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
+                UploadController.class, "serveFile", result.resultZipFileName()).build().toUri().toString());
+
         // Pass results to the view
         redirectAttributes.addFlashAttribute("originalFilename", originalFilename);
-        redirectAttributes.addFlashAttribute("extractedFilename", result.resultZipFileName());
+        redirectAttributes.addFlashAttribute("generatedFiles", generatedFiles);
+        redirectAttributes.addFlashAttribute("generatedFileUrls", generatedFileUrls);
         redirectAttributes.addFlashAttribute("successMessage", message.toString());
         redirectAttributes.addFlashAttribute("isZipResult", true);
         redirectAttributes.addFlashAttribute("processedFiles", result.processedFiles());

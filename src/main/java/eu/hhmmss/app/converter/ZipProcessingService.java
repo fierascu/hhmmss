@@ -1,6 +1,7 @@
 package eu.hhmmss.app.converter;
 
 import eu.hhmmss.app.uploadingfiles.storage.StorageException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -17,22 +18,26 @@ import java.util.zip.ZipOutputStream;
 
 /**
  * Service to process ZIP files containing multiple Excel timesheets.
- * Extracts each Excel file, converts it to DOCX, and packages all results into a new ZIP.
+ * Extracts each Excel file, converts it to DOCX and PDFs, and packages all results into a new ZIP.
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ZipProcessingService {
+
+    private final PdfService pdfService;
 
     /**
      * Processes a ZIP file containing multiple Excel timesheets.
      *
      * @param zipPath Path to the uploaded ZIP file
+     * @param uploadedZipFilename Original uploaded filename (with UUID-hash for traceability)
      * @param templatePath Path to the DOCX template
      * @param outputDir Directory where output files will be stored
      * @return ZipProcessingResult containing the result ZIP path and processing stats
      * @throws StorageException if processing fails
      */
-    public ZipProcessingResult processZipFile(Path zipPath, Path templatePath, Path outputDir) {
+    public ZipProcessingResult processZipFile(Path zipPath, String uploadedZipFilename, Path templatePath, Path outputDir) {
         List<Path> convertedFiles = new ArrayList<>();
         List<String> processedFileNames = new ArrayList<>();
         List<String> failedFileNames = new ArrayList<>();
@@ -63,17 +68,32 @@ public class ZipProcessingService {
                     // Read timesheet data
                     HhmmssDto hhmmssDto = XlsService.readTimesheet(excelFile);
 
-                    // Generate output DOCX filename (based on original Excel filename)
+                    // Generate output filenames (based on original Excel filename)
                     String baseName = fileName.substring(0, fileName.lastIndexOf('.'));
-                    String outputFileName = baseName + "_timesheet.docx";
-                    Path outputDocx = outputDir.resolve(outputFileName);
 
-                    // Convert to DOCX
+                    // 1. Generate DOCX from Excel data
+                    String docxFileName = baseName + "_timesheet.docx";
+                    Path outputDocx = outputDir.resolve(docxFileName);
                     DocService.addDataToDocs(templatePath, hhmmssDto, outputDocx);
-
                     convertedFiles.add(outputDocx);
+                    log.info("Generated DOCX: {}", docxFileName);
+
+                    // 2. Generate PDF from original Excel file (1:1 print)
+                    String excelPdfFileName = baseName + "_input.pdf";
+                    Path excelPdf = outputDir.resolve(excelPdfFileName);
+                    pdfService.convertXlsToPdf(excelFile, excelPdf);
+                    convertedFiles.add(excelPdf);
+                    log.info("Generated PDF from Excel: {}", excelPdfFileName);
+
+                    // 3. Generate PDF from DOCX (1:1 print)
+                    String docxPdfFileName = baseName + "_timesheet.pdf";
+                    Path docxPdf = outputDir.resolve(docxPdfFileName);
+                    pdfService.convertDocToPdf(outputDocx, docxPdf);
+                    convertedFiles.add(docxPdf);
+                    log.info("Generated PDF from DOCX: {}", docxPdfFileName);
+
                     processedFileNames.add(fileName);
-                    log.info("Successfully converted: {} -> {}", fileName, outputFileName);
+                    log.info("Successfully processed: {} -> DOCX, Excel PDF, and DOCX PDF", fileName);
 
                 } catch (Exception e) {
                     log.error("Failed to process Excel file: {}", fileName, e);
@@ -85,21 +105,22 @@ public class ZipProcessingService {
                 throw new StorageException("Failed to convert any Excel files from the ZIP archive");
             }
 
-            // Create result ZIP with all converted DOCX files
-            String resultZipName = "timesheets_" + UUID.randomUUID() + ".zip";
+            // Create result ZIP with all converted files (DOCX and PDFs)
+            // Maintain traceability: use uploaded filename as base for result ZIP
+            String resultZipName = uploadedZipFilename + "-result.zip";
             Path resultZipPath = outputDir.resolve(resultZipName);
             createZipFile(convertedFiles, resultZipPath);
 
-            // Clean up individual DOCX files (keep only the ZIP)
-            for (Path docxFile : convertedFiles) {
+            // Clean up individual files (keep only the ZIP)
+            for (Path file : convertedFiles) {
                 try {
-                    Files.deleteIfExists(docxFile);
+                    Files.deleteIfExists(file);
                 } catch (IOException e) {
-                    log.warn("Could not delete temporary DOCX file: {}", docxFile, e);
+                    log.warn("Could not delete temporary file: {}", file, e);
                 }
             }
 
-            log.info("Created result ZIP: {} with {} converted files", resultZipName, convertedFiles.size());
+            log.info("Created result ZIP: {} with {} converted files (DOCX + PDFs)", resultZipName, convertedFiles.size());
 
             return new ZipProcessingResult(
                 resultZipPath,

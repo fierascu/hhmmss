@@ -1,16 +1,20 @@
 package eu.hhmmss.app.uploadingfiles.storage;
 
+import eu.hhmmss.app.util.FileHasher;
+import eu.hhmmss.app.util.TimeBasedUuidGenerator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.Resource;
 import org.springframework.mock.web.MockMultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -290,5 +294,210 @@ class UploadServiceTest {
         String tempDir = System.getProperty("java.io.tmpdir");
         Path expectedPath = Paths.get(tempDir, "uploads");
         assertTrue(Files.exists(expectedPath));
+    }
+
+    // ===== New tests for UUID+hash naming scheme =====
+
+    @Test
+    void testStoreUsesTimeBasedUuid() throws IOException {
+        byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        String storedFilename = uploadService.store(file);
+
+        // Extract UUID from filename (format: UUID-hash.extension)
+        String uuidPart = storedFilename.split("-")[0] + "-" + storedFilename.split("-")[1] + "-" +
+                storedFilename.split("-")[2] + "-" + storedFilename.split("-")[3] + "-" +
+                storedFilename.split("-")[4];
+        UUID uuid = UUID.fromString(uuidPart);
+
+        // Verify it's a version 7 UUID
+        assertTrue(TimeBasedUuidGenerator.isVersion7(uuid),
+                "Stored filename should use time-based UUID v7");
+    }
+
+    @Test
+    void testStoreIncludesFileHash() throws IOException {
+        byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        String storedFilename = uploadService.store(file);
+
+        // Compute expected hash
+        String expectedHash = FileHasher.computeShortHash(new ByteArrayInputStream(xlsxContent));
+
+        // Verify filename contains the hash
+        assertTrue(storedFilename.contains(expectedHash),
+                "Stored filename should contain the file hash");
+    }
+
+    @Test
+    void testStoreFilenameFormat() throws IOException {
+        byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        String storedFilename = uploadService.store(file);
+
+        // Verify format: UUID-hash.extension
+        // Pattern: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx-hash.xlsx
+        assertTrue(storedFilename.matches(
+                "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[0-9a-f]{16}\\.xlsx"),
+                "Filename should match pattern: UUID-hash.extension"
+        );
+    }
+
+    @Test
+    void testStoreSameContentProducesSameHash() throws IOException {
+        byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+
+        MockMultipartFile file1 = new MockMultipartFile(
+                "file",
+                "test1.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+        MockMultipartFile file2 = new MockMultipartFile(
+                "file",
+                "test2.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        String storedFilename1 = uploadService.store(file1);
+        String storedFilename2 = uploadService.store(file2);
+
+        // Extract hashes from filenames
+        String hash1 = extractHashFromFilename(storedFilename1);
+        String hash2 = extractHashFromFilename(storedFilename2);
+
+        // Same content should produce same hash
+        assertEquals(hash1, hash2,
+                "Files with identical content should have the same hash");
+
+        // But UUIDs should be different (time-based)
+        String uuid1 = extractUuidFromFilename(storedFilename1);
+        String uuid2 = extractUuidFromFilename(storedFilename2);
+        assertNotEquals(uuid1, uuid2,
+                "Files should have different time-based UUIDs");
+    }
+
+    @Test
+    void testStoreDifferentContentProducesDifferentHash() throws IOException {
+        byte[] xlsxContent1 = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+        byte[] xlsxContent2 = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x01}; // Different
+
+        MockMultipartFile file1 = new MockMultipartFile(
+                "file",
+                "test1.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent1
+        );
+        MockMultipartFile file2 = new MockMultipartFile(
+                "file",
+                "test2.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent2
+        );
+
+        String storedFilename1 = uploadService.store(file1);
+        String storedFilename2 = uploadService.store(file2);
+
+        // Extract hashes from filenames
+        String hash1 = extractHashFromFilename(storedFilename1);
+        String hash2 = extractHashFromFilename(storedFilename2);
+
+        // Different content should produce different hashes
+        assertNotEquals(hash1, hash2,
+                "Files with different content should have different hashes");
+    }
+
+    @Test
+    void testStorePreservesExtensionWithNewNaming() throws IOException {
+        // Test with different extensions
+        byte[] content = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+
+        MockMultipartFile xlsxFile = new MockMultipartFile(
+                "file", "test.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                content
+        );
+        MockMultipartFile zipFile = new MockMultipartFile(
+                "file", "test.zip",
+                "application/zip",
+                content
+        );
+
+        String xlsxFilename = uploadService.store(xlsxFile);
+        String zipFilename = uploadService.store(zipFile);
+
+        assertTrue(xlsxFilename.endsWith(".xlsx"),
+                "XLSX extension should be preserved");
+        assertTrue(zipFilename.endsWith(".zip"),
+                "ZIP extension should be preserved");
+    }
+
+    @Test
+    void testUuidTimestampReflectsUploadTime() throws IOException {
+        byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        long beforeUpload = System.currentTimeMillis();
+        String storedFilename = uploadService.store(file);
+        long afterUpload = System.currentTimeMillis();
+
+        // Extract UUID and timestamp
+        String uuidString = extractUuidFromFilename(storedFilename);
+        UUID uuid = UUID.fromString(uuidString);
+        long timestamp = TimeBasedUuidGenerator.extractTimestamp(uuid);
+
+        // Verify timestamp is within the upload time window
+        assertTrue(timestamp >= beforeUpload && timestamp <= afterUpload,
+                "UUID timestamp should reflect the upload time");
+    }
+
+    // Helper methods for extracting UUID and hash from filename
+
+    private String extractUuidFromFilename(String filename) {
+        // Format: UUID-hash.extension
+        // UUID is the first 5 parts separated by hyphens
+        String[] parts = filename.split("-");
+        if (parts.length >= 5) {
+            return parts[0] + "-" + parts[1] + "-" + parts[2] + "-" + parts[3] + "-" + parts[4];
+        }
+        fail("Invalid filename format: " + filename);
+        return null;
+    }
+
+    private String extractHashFromFilename(String filename) {
+        // Format: UUID-hash.extension
+        // Hash is after the 5th hyphen and before the dot
+        String[] parts = filename.split("-");
+        if (parts.length >= 6) {
+            String lastPart = parts[5];
+            // Remove extension
+            return lastPart.split("\\.")[0];
+        }
+        fail("Invalid filename format: " + filename);
+        return null;
     }
 }
