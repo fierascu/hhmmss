@@ -206,7 +206,7 @@ public class UploadController {
         // Build success message
         StringBuilder message = new StringBuilder();
         message.append("ZIP file processed successfully! ");
-        message.append("Converted ").append(result.successCount()).append(" file(s).");
+        message.append("Converted ").append(result.successCount()).append(" file(s) to DOCX, Excel PDF, and Timesheet PDF.");
 
         if (result.failureCount() > 0) {
             message.append(" Failed: ").append(result.failureCount()).append(" file(s).");
@@ -215,7 +215,7 @@ public class UploadController {
         // Build list of generated files for display
         java.util.List<String> generatedFiles = new java.util.ArrayList<>();
         generatedFiles.add(uuidFilename + " (Uploaded ZIP)");
-        generatedFiles.add(result.resultZipFileName() + " (Converted Timesheets ZIP)");
+        generatedFiles.add(result.resultZipFileName() + " (Converted Timesheets - DOCX + PDFs)");
 
         // Build file URLs for download links
         java.util.List<String> generatedFileUrls = new java.util.ArrayList<>();
