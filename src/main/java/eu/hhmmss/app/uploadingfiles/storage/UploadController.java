@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jodconverter.core.office.OfficeException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -34,6 +35,12 @@ public class UploadController {
     private final ZipProcessingService zipProcessingService;
     private final PdfService pdfService;
     private final ThrottlingService throttlingService;
+
+    @Value("${app.upload.max-xlsx-size}")
+    private long maxXlsxSize;
+
+    @Value("${app.upload.max-zip-size}")
+    private long maxZipSize;
 
     @GetMapping("/")
     public String listUploadedFiles(@RequestParam(required = false) String theme,
@@ -78,6 +85,9 @@ public class UploadController {
         throttlingService.acquirePermit();
 
         try {
+            // Step 0: Validate file size based on file type
+            validateFileSize(file);
+
             // Step 1: Store the uploaded file
             String uuidFilename = uploadService.store(file);
             log.info("Stored uploaded file as: {}", uuidFilename);
@@ -249,6 +259,40 @@ public class UploadController {
     private boolean isZipFile(String filename) {
         if (filename == null) return false;
         return filename.toLowerCase().endsWith(".zip");
+    }
+
+    /**
+     * Validates that the uploaded file size does not exceed the limit for its file type.
+     * XLSX files are limited to 128KB, ZIP files to 2MB.
+     *
+     * @param file the uploaded file to validate
+     * @throws FileSizeExceededException if the file exceeds its type-specific size limit
+     */
+    private void validateFileSize(MultipartFile file) {
+        String filename = file.getOriginalFilename();
+        long fileSize = file.getSize();
+
+        if (isZipFile(filename)) {
+            // ZIP file validation
+            if (fileSize > maxZipSize) {
+                String maxSizeMB = String.format("%.2f", maxZipSize / (1024.0 * 1024.0));
+                String actualSizeMB = String.format("%.2f", fileSize / (1024.0 * 1024.0));
+                throw new FileSizeExceededException(
+                        String.format("ZIP file size (%s MB) exceeds the maximum limit of %s MB.",
+                                actualSizeMB, maxSizeMB));
+            }
+            log.debug("ZIP file size validation passed: {} bytes (max: {} bytes)", fileSize, maxZipSize);
+        } else {
+            // XLSX file validation
+            if (fileSize > maxXlsxSize) {
+                String maxSizeKB = String.format("%.0f", maxXlsxSize / 1024.0);
+                String actualSizeKB = String.format("%.2f", fileSize / 1024.0);
+                throw new FileSizeExceededException(
+                        String.format("Excel file size (%s KB) exceeds the maximum limit of %s KB.",
+                                actualSizeKB, maxSizeKB));
+            }
+            log.debug("XLSX file size validation passed: {} bytes (max: {} bytes)", fileSize, maxXlsxSize);
+        }
     }
 
     @ExceptionHandler(StorageFileNotFoundException.class)
