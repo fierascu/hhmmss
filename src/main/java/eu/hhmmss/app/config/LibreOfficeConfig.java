@@ -1,20 +1,18 @@
 package eu.hhmmss.app.config;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.jodconverter.boot.autoconfigure.JodConverterLocalAutoConfiguration;
 import org.jodconverter.core.DocumentConverter;
-import org.jodconverter.core.office.OfficeException;
 import org.jodconverter.core.office.OfficeManager;
 import org.jodconverter.local.LocalConverter;
 import org.jodconverter.local.office.LocalOfficeManager;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.autoconfigure.jodconverter.JodConverterAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import jakarta.annotation.PostConstruct;
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -28,7 +26,7 @@ import java.nio.file.Paths;
  * and provides a custom DocumentConverter bean that handles errors gracefully.
  */
 @Configuration
-@EnableAutoConfiguration(exclude = JodConverterAutoConfiguration.class)
+@EnableAutoConfiguration(exclude = JodConverterLocalAutoConfiguration.class)
 @ConditionalOnProperty(name = "jodconverter.local.enabled", havingValue = "true", matchIfMissing = false)
 @Slf4j
 public class LibreOfficeConfig {
