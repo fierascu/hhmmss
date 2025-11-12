@@ -16,6 +16,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -202,5 +204,80 @@ class PdfServiceTest {
         verify(documentConverter).convert(docPath.toFile());
         verify(sourceJob).to(pdfPath.toFile());
         verify(targetJob).execute();
+    }
+
+    // ===== Tests for null DocumentConverter handling (LibreOffice not configured) =====
+
+    @Test
+    void testPdfService_WithNullDocumentConverter() {
+        // Create PdfService with null DocumentConverter (LibreOffice not configured)
+        PdfService pdfServiceWithNull = new PdfService(null);
+
+        // Verify that isConversionAvailable returns false
+        assertFalse(pdfServiceWithNull.isConversionAvailable(),
+                "Conversion should not be available when DocumentConverter is null");
+    }
+
+    @Test
+    void testIsConversionAvailable_WhenDocumentConverterExists() {
+        // Verify that isConversionAvailable returns true when DocumentConverter exists
+        assertTrue(pdfService.isConversionAvailable(),
+                "Conversion should be available when DocumentConverter is configured");
+    }
+
+    @Test
+    void testConvertXlsToPdf_WithNullDocumentConverter_ThrowsOfficeException() throws IOException {
+        // Create PdfService with null DocumentConverter
+        PdfService pdfServiceWithNull = new PdfService(null);
+
+        // Create temporary test files
+        Path xlsPath = Files.createTempFile("test", ".xlsx");
+        Path pdfPath = Files.createTempFile("output", ".pdf");
+
+        try {
+            // Attempt conversion and verify it throws OfficeException
+            OfficeException exception = assertThrows(OfficeException.class, () ->
+                    pdfServiceWithNull.convertXlsToPdf(xlsPath, pdfPath),
+                    "Should throw OfficeException when DocumentConverter is null"
+            );
+
+            // Verify the exception message is helpful
+            assertTrue(exception.getMessage().contains("LibreOffice is not configured"),
+                    "Exception message should mention LibreOffice not being configured");
+            assertTrue(exception.getMessage().contains("PDF conversion is not available"),
+                    "Exception message should mention PDF conversion being unavailable");
+        } finally {
+            // Clean up
+            Files.deleteIfExists(xlsPath);
+            Files.deleteIfExists(pdfPath);
+        }
+    }
+
+    @Test
+    void testConvertDocToPdf_WithNullDocumentConverter_ThrowsOfficeException() throws IOException {
+        // Create PdfService with null DocumentConverter
+        PdfService pdfServiceWithNull = new PdfService(null);
+
+        // Create temporary test files
+        Path docPath = Files.createTempFile("test", ".docx");
+        Path pdfPath = Files.createTempFile("output", ".pdf");
+
+        try {
+            // Attempt conversion and verify it throws OfficeException
+            OfficeException exception = assertThrows(OfficeException.class, () ->
+                    pdfServiceWithNull.convertDocToPdf(docPath, pdfPath),
+                    "Should throw OfficeException when DocumentConverter is null"
+            );
+
+            // Verify the exception message is helpful
+            assertTrue(exception.getMessage().contains("LibreOffice is not configured"),
+                    "Exception message should mention LibreOffice not being configured");
+            assertTrue(exception.getMessage().contains("PDF conversion is not available"),
+                    "Exception message should mention PDF conversion being unavailable");
+        } finally {
+            // Clean up
+            Files.deleteIfExists(docPath);
+            Files.deleteIfExists(pdfPath);
+        }
     }
 }
