@@ -29,7 +29,7 @@ import java.nio.file.Paths;
 @Slf4j
 public class LibreOfficeConfig {
 
-    @Value("${jodconverter.local.office-home}")
+    @Value("${jodconverter.local.office-home:}")
     private String officeHome;
 
     @Value("${jodconverter.local.port-numbers:2002}")
