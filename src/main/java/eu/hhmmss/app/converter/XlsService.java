@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -84,6 +85,61 @@ public class XlsService {
 
         log.info("xlsxFormat: {}", hhmmssDto);
         return hhmmssDto;
+    }
+
+    /**
+     * Updates the period field in an Excel timesheet file.
+     * Finds the "Period (month/year):" label in column B and updates the value to its right.
+     *
+     * @param xlsxPath path to the Excel file to update
+     * @param newPeriod the new period value to set
+     * @throws IOException if file cannot be read or written
+     */
+    public static void updatePeriod(Path xlsxPath, String newPeriod) throws IOException {
+        try (InputStream in = new FileInputStream(xlsxPath.toFile());
+             Workbook wb = new XSSFWorkbook(in)) {
+
+            Sheet sheet = wb.getSheet("Timesheet");
+            if (sheet == null) {
+                log.warn("Sheet 'Timesheet' not found in Excel: {}", xlsxPath);
+                return;
+            }
+
+            // Find and update the period value
+            boolean updated = false;
+            for (Row r : sheet) {
+                Cell labelCell = r.getCell(1); // column B
+                if (labelCell != null && "Period (month/year):".equals(getCellString(labelCell))) {
+                    // Find the first non-empty cell to the right and update it
+                    for (int i = 2; i <= Math.max(r.getLastCellNum(), 10); i++) {
+                        Cell valueCell = r.getCell(i);
+                        if (valueCell == null) {
+                            valueCell = r.createCell(i);
+                        }
+                        String currentValue = getCellString(valueCell).trim();
+                        if (!currentValue.isEmpty() || i == 2) {
+                            // Update this cell
+                            valueCell.setCellValue(newPeriod);
+                            updated = true;
+                            log.info("Updated period in Excel from '{}' to '{}'", currentValue, newPeriod);
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+
+            if (!updated) {
+                log.warn("Could not find 'Period (month/year):' field in Excel to update");
+                return;
+            }
+
+            // Write back to file
+            try (FileOutputStream out = new FileOutputStream(xlsxPath.toFile())) {
+                wb.write(out);
+                log.info("Successfully updated period in Excel file: {}", xlsxPath);
+            }
+        }
     }
 
     private static String getCellString(Cell c) {

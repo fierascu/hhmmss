@@ -157,8 +157,17 @@ public class UploadController {
 
         // Override period if provided by user
         if (period != null && !period.trim().isEmpty()) {
-            extractedData.getMeta().put("Period (month/year):", formatPeriod(period));
+            String formattedPeriod = formatPeriod(period);
+            extractedData.getMeta().put("Period (month/year):", formattedPeriod);
             log.info("Overriding period with user-provided value: {}", period);
+
+            // Also update the period in the uploaded Excel file itself
+            try {
+                XlsService.updatePeriod(uploadedFilePath, formattedPeriod);
+            } catch (IOException e) {
+                log.error("Failed to update period in Excel file", e);
+                // Continue processing even if update fails
+            }
         }
 
         // Step 3: Generate DOCX with extracted data
