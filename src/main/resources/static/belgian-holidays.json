@@ -1,129 +1,326 @@
 {
   "country": "Belgium",
   "years": {
-    "2025": [
-      {
-        "name": "New Year's Day",
-        "name_nl": "Nieuwjaar",
-        "name_fr": "Nouvel An",
-        "date": "2025-01-01"
-      },
-      {
-        "name": "Easter Monday",
-        "name_nl": "Paasmaandag",
-        "name_fr": "Lundi de Pâques",
-        "date": "2025-04-21"
-      },
-      {
-        "name": "Labour Day",
-        "name_nl": "Dag van de Arbeid",
-        "name_fr": "Fête du Travail",
-        "date": "2025-05-01"
-      },
-      {
-        "name": "Ascension Day",
-        "name_nl": "O.L.H. Hemelvaart",
-        "name_fr": "Ascension",
-        "date": "2025-05-29"
-      },
-      {
-        "name": "Whit Monday",
-        "name_nl": "Pinkstermaandag",
-        "name_fr": "Lundi de Pentecôte",
-        "date": "2025-06-09"
-      },
-      {
-        "name": "Belgian National Day",
-        "name_nl": "Nationale Feestdag",
-        "name_fr": "Fête Nationale",
-        "date": "2025-07-21"
-      },
-      {
-        "name": "Assumption of Mary",
-        "name_nl": "O.L.V. Hemelvaart",
-        "name_fr": "Assomption",
-        "date": "2025-08-15"
-      },
-      {
-        "name": "All Saints' Day",
-        "name_nl": "Allerheiligen",
-        "name_fr": "Toussaint",
-        "date": "2025-11-01"
-      },
-      {
-        "name": "Armistice Day",
-        "name_nl": "Wapenstilstand",
-        "name_fr": "Armistice",
-        "date": "2025-11-11"
-      },
-      {
-        "name": "Christmas Day",
-        "name_nl": "Kerstmis",
-        "name_fr": "Noël",
-        "date": "2025-12-25"
-      }
-    ],
-    "2026": [
-      {
-        "name": "New Year's Day",
-        "name_nl": "Nieuwjaar",
-        "name_fr": "Nouvel An",
-        "date": "2026-01-01"
-      },
-      {
-        "name": "Easter Monday",
-        "name_nl": "Paasmaandag",
-        "name_fr": "Lundi de Pâques",
-        "date": "2026-04-06"
-      },
-      {
-        "name": "Labour Day",
-        "name_nl": "Dag van de Arbeid",
-        "name_fr": "Fête du Travail",
-        "date": "2026-05-01"
-      },
-      {
-        "name": "Ascension Day",
-        "name_nl": "O.L.H. Hemelvaart",
-        "name_fr": "Ascension",
-        "date": "2026-05-14"
-      },
-      {
-        "name": "Whit Monday",
-        "name_nl": "Pinkstermaandag",
-        "name_fr": "Lundi de Pentecôte",
-        "date": "2026-05-25"
-      },
-      {
-        "name": "Belgian National Day",
-        "name_nl": "Nationale Feestdag",
-        "name_fr": "Fête Nationale",
-        "date": "2026-07-21"
-      },
-      {
-        "name": "Assumption of Mary",
-        "name_nl": "O.L.V. Hemelvaart",
-        "name_fr": "Assomption",
-        "date": "2026-08-15"
-      },
-      {
-        "name": "All Saints' Day",
-        "name_nl": "Allerheiligen",
-        "name_fr": "Toussaint",
-        "date": "2026-11-01"
-      },
-      {
-        "name": "Armistice Day",
-        "name_nl": "Wapenstilstand",
-        "name_fr": "Armistice",
-        "date": "2026-11-11"
-      },
-      {
-        "name": "Christmas Day",
-        "name_nl": "Kerstmis",
-        "name_fr": "Noël",
-        "date": "2026-12-25"
-      }
-    ]
+    "2025": {
+      "public_holidays": [
+        {
+          "name": "New Year's Day",
+          "name_nl": "Nieuwjaar",
+          "name_fr": "Nouvel An",
+          "date": "2025-01-01"
+        },
+        {
+          "name": "Easter Monday",
+          "name_nl": "Paasmaandag",
+          "name_fr": "Lundi de Pâques",
+          "date": "2025-04-21"
+        },
+        {
+          "name": "Labour Day",
+          "name_nl": "Dag van de Arbeid",
+          "name_fr": "Fête du Travail",
+          "date": "2025-05-01"
+        },
+        {
+          "name": "Ascension Day",
+          "name_nl": "O.L.H. Hemelvaart",
+          "name_fr": "Ascension",
+          "date": "2025-05-29"
+        },
+        {
+          "name": "Whit Monday",
+          "name_nl": "Pinkstermaandag",
+          "name_fr": "Lundi de Pentecôte",
+          "date": "2025-06-09"
+        },
+        {
+          "name": "Belgian National Day",
+          "name_nl": "Nationale Feestdag",
+          "name_fr": "Fête Nationale",
+          "date": "2025-07-21"
+        },
+        {
+          "name": "Assumption of Mary",
+          "name_nl": "O.L.V. Hemelvaart",
+          "name_fr": "Assomption",
+          "date": "2025-08-15"
+        },
+        {
+          "name": "All Saints' Day",
+          "name_nl": "Allerheiligen",
+          "name_fr": "Toussaint",
+          "date": "2025-11-01"
+        },
+        {
+          "name": "Armistice Day",
+          "name_nl": "Wapenstilstand",
+          "name_fr": "Armistice",
+          "date": "2025-11-11"
+        },
+        {
+          "name": "Christmas Day",
+          "name_nl": "Kerstmis",
+          "name_fr": "Noël",
+          "date": "2025-12-25"
+        }
+      ],
+      "ep_long_fridays": [
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2025-01-10",
+          "session_start": "2025-01-13"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2025-02-07",
+          "session_start": "2025-02-10"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2025-03-07",
+          "session_start": "2025-03-10"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2025-03-21",
+          "session_start": "2025-03-24"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2025-04-04",
+          "session_start": "2025-04-07"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2025-05-02",
+          "session_start": "2025-05-05"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2025-05-16",
+          "session_start": "2025-05-19"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2025-06-13",
+          "session_start": "2025-06-16"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2025-07-04",
+          "session_start": "2025-07-07"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2025-09-12",
+          "session_start": "2025-09-15"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2025-10-03",
+          "session_start": "2025-10-06"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2025-10-17",
+          "session_start": "2025-10-20"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2025-11-14",
+          "session_start": "2025-11-17"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2025-12-12",
+          "session_start": "2025-12-15"
+        }
+      ]
+    },
+    "2026": {
+      "public_holidays": [
+        {
+          "name": "New Year's Day",
+          "name_nl": "Nieuwjaar",
+          "name_fr": "Nouvel An",
+          "date": "2026-01-01"
+        },
+        {
+          "name": "Easter Monday",
+          "name_nl": "Paasmaandag",
+          "name_fr": "Lundi de Pâques",
+          "date": "2026-04-06"
+        },
+        {
+          "name": "Labour Day",
+          "name_nl": "Dag van de Arbeid",
+          "name_fr": "Fête du Travail",
+          "date": "2026-05-01"
+        },
+        {
+          "name": "Ascension Day",
+          "name_nl": "O.L.H. Hemelvaart",
+          "name_fr": "Ascension",
+          "date": "2026-05-14"
+        },
+        {
+          "name": "Whit Monday",
+          "name_nl": "Pinkstermaandag",
+          "name_fr": "Lundi de Pentecôte",
+          "date": "2026-05-25"
+        },
+        {
+          "name": "Belgian National Day",
+          "name_nl": "Nationale Feestdag",
+          "name_fr": "Fête Nationale",
+          "date": "2026-07-21"
+        },
+        {
+          "name": "Assumption of Mary",
+          "name_nl": "O.L.V. Hemelvaart",
+          "name_fr": "Assomption",
+          "date": "2026-08-15"
+        },
+        {
+          "name": "All Saints' Day",
+          "name_nl": "Allerheiligen",
+          "name_fr": "Toussaint",
+          "date": "2026-11-01"
+        },
+        {
+          "name": "Armistice Day",
+          "name_nl": "Wapenstilstand",
+          "name_fr": "Armistice",
+          "date": "2026-11-11"
+        },
+        {
+          "name": "Christmas Day",
+          "name_nl": "Kerstmis",
+          "name_fr": "Noël",
+          "date": "2026-12-25"
+        }
+      ],
+      "ep_long_fridays": [
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2026-01-09",
+          "session_start": "2026-01-12"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2026-02-06",
+          "session_start": "2026-02-09"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2026-03-06",
+          "session_start": "2026-03-09"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2026-03-20",
+          "session_start": "2026-03-23"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2026-04-17",
+          "session_start": "2026-04-20"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2026-05-15",
+          "session_start": "2026-05-18"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2026-06-12",
+          "session_start": "2026-06-15"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2026-07-03",
+          "session_start": "2026-07-06"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2026-09-11",
+          "session_start": "2026-09-14"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2026-10-02",
+          "session_start": "2026-10-05"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2026-10-16",
+          "session_start": "2026-10-19"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2026-11-13",
+          "session_start": "2026-11-16"
+        },
+        {
+          "name": "EP Long Friday",
+          "name_nl": "EP Lange Vrijdag",
+          "name_fr": "EP Vendredi Long",
+          "date": "2026-12-11",
+          "session_start": "2026-12-14"
+        }
+      ]
+    }
   }
 }
