@@ -1,5 +1,6 @@
 package eu.hhmmss.app.controller;
 
+import eu.hhmmss.app.uploadingfiles.storage.UploadController;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.boot.web.servlet.error.ErrorController;
@@ -15,8 +16,7 @@ public class CustomErrorController implements ErrorController {
     public String handleError(@RequestParam(required = false) String theme,
                               HttpServletRequest request,
                               Model model) {
-        // Set theme (default is terminal, classic is alternative)
-        model.addAttribute("theme", "classic".equals(theme) ? "classic" : "terminal");
+        model.addAttribute("theme", UploadController.getSelectedTheme(theme));
 
         Object status = request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
         Object message = request.getAttribute(RequestDispatcher.ERROR_MESSAGE);

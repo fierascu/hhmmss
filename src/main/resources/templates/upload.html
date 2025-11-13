@@ -1,40 +1,11 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org"
-      th:replace="~{${theme == 'classic' ? 'layout-classic' : 'layout'} :: layout(title='Upload Timesheet', content=~{::content})}">
+      th:replace="~{${theme == 'classic' ? 'layout-classic' : (theme == 'terminal' ? 'layout' : 'layout-ascii')} :: layout(title='Upload Timesheet', content=~{::content})}">
 
 <th:block th:fragment="content">
-    <!-- Error Message -->
-    <div th:if="${errorMessage}" class="alert alert-error">
-        <strong>[ERROR]</strong>
-        <span th:text="${errorMessage}"></span>
-    </div>
-
-    <!-- Success Message -->
-    <div th:if="${successMessage}" class="alert alert-success">
-        <strong>[OK]</strong>
-        <span th:text="${successMessage}"></span>
-
-        <!-- Show processed files list for ZIP batch processing -->
-        <div th:if="${isZipResult}" style="margin-top: 1rem;">
-            <div th:if="${processedFiles != null and !#lists.isEmpty(processedFiles)}" style="margin-top: 0.75rem;">
-                <strong style="color: #065f46;">Successfully processed files:</strong>
-                <ul style="margin: 0.5rem 0; padding-left: 1.25rem; color: #065f46;">
-                    <li th:each="file : ${processedFiles}" th:text="${file}"></li>
-                </ul>
-            </div>
-
-            <div th:if="${failedFiles != null and !#lists.isEmpty(failedFiles)}" style="margin-top: 0.75rem;">
-                <strong style="color: #991b1b;">Failed files:</strong>
-                <ul style="margin: 0.5rem 0; padding-left: 1.25rem; color: #991b1b;">
-                    <li th:each="file : ${failedFiles}" th:text="${file}"></li>
-                </ul>
-            </div>
-        </div>
-
-    </div>
-
     <!-- Upload Form -->
-    <form th:action="${theme == 'classic' ? '/?theme=classic' : '/'}" enctype="multipart/form-data" method="POST">
+    <form th:action="${theme == 'classic' ? '/?theme=classic' : (theme == 'terminal' ? '/?theme=terminal' : '/')}"
+          enctype="multipart/form-data" method="POST">
         <div class="form-group">
             <label for="fileInput">Select Excel Timesheet or ZIP file</label>
             <input id="fileInput" name="file" type="file"
@@ -66,6 +37,34 @@
             uploadButton.disabled = !isValidFile;
         });
     </script>
+
+    <!-- Error Message -->
+    <div th:if="${errorMessage}" class="alert alert-error" style="margin-top: 1rem;">
+        <strong>[ERROR]</strong>
+        <span th:text="${errorMessage}"></span>
+    </div>
+
+    <!-- Success Message -->
+    <div th:if="${successMessage}" class="alert alert-success" style="margin-top: 1rem;">
+        <span th:text="${successMessage}"></span>
+
+        <!-- Show processed files list for ZIP batch processing -->
+        <div th:if="${isZipResult}" style="margin-top: 1rem;">
+            <div th:if="${processedFiles != null and !#lists.isEmpty(processedFiles)}" style="margin-top: 0.75rem;">
+                <strong style="color: #065f46;">Successfully processed files:</strong>
+                <ul style="margin: 0.5rem 0; padding-left: 1.25rem; color: #065f46;">
+                    <li th:each="file : ${processedFiles}" th:text="${file}"></li>
+                </ul>
+            </div>
+
+            <div th:if="${failedFiles != null and !#lists.isEmpty(failedFiles)}" style="margin-top: 0.75rem;">
+                <strong style="color: #991b1b;">Failed files:</strong>
+                <ul style="margin: 0.5rem 0; padding-left: 1.25rem; color: #991b1b;">
+                    <li th:each="file : ${failedFiles}" th:text="${file}"></li>
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <!-- Generated Files from Current Conversion -->
     <div th:if="${generatedFiles != null and !#lists.isEmpty(generatedFiles)}" class="file-list">

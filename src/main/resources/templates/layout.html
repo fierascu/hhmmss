@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${title}">Page Title</title>
+    <title th:text="${title}">Timesheet Excel Converter</title>
     <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <style>
@@ -182,14 +182,6 @@
             position: relative;
         }
 
-        .btn::before {
-            content: '[ ';
-        }
-
-        .btn::after {
-            content: ' ]';
-        }
-
         .btn-primary {
             border-color: var(--terminal-border);
             color: var(--terminal-fg);
@@ -322,7 +314,6 @@
         }
 
         .footer {
-            text-align: center;
             margin-top: 2rem;
             color: var(--muted-color);
             font-size: 0.875rem;
@@ -399,27 +390,12 @@
 
 <body>
     <div class="container">
-        <div class="header">
-            <h1>HH:MM:SS</h1>
-            <p>Timesheet Converter v1.0</p>
-        </div>
 
         <div class="card">
             <div th:replace="${content}"></div>
         </div>
 
-        <div class="footer">
-            <p>Excel to DOCX and PDF converter with ZIP batch processing</p>
-            <p style="margin-top: 1rem; font-size: 0.8rem; line-height: 1.5;">
-                <strong>Privacy Notice:</strong> For security, files are stored for 1 day maximum and automatically deleted.
-                No personal information is ever logged.
-                <a href="https://github.com/fierascu/hhmmss" style="color: var(--link-color); text-decoration: none;" target="_blank" rel="noopener noreferrer">View source code</a>
-                to audit our security practices.
-            </p>
-            <div class="theme-switch">
-                <a href="/?theme=classic">classic theme</a>
-            </div>
-        </div>
+        <div th:replace="~{footer :: footer('terminal')}"></div>
     </div>
 </body>
 
