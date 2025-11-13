@@ -36,6 +36,25 @@
 
             uploadButton.disabled = !isValidFile;
         });
+
+        // Add loading animation on form submit
+        document.querySelector('form').addEventListener('submit', function() {
+            var uploadButton = document.getElementById('uploadButton');
+            uploadButton.disabled = true;
+
+            // ASCII spinner frames
+            var spinnerFrames = ['|', '/', '-', '\\'];
+            var currentFrame = 0;
+
+            // Update button text with spinner animation
+            var spinnerInterval = setInterval(function() {
+                uploadButton.textContent = 'Processing ' + spinnerFrames[currentFrame];
+                currentFrame = (currentFrame + 1) % spinnerFrames.length;
+            }, 150); // Update every 150ms
+
+            // Store interval ID so it can be cleared if needed
+            uploadButton.dataset.spinnerInterval = spinnerInterval;
+        });
     </script>
 
     <!-- Error Message -->
