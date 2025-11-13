@@ -316,6 +316,42 @@ public class UploadController {
         }
     }
 
+    @GetMapping("/template/generate")
+    @ResponseBody
+    public ResponseEntity<Resource> generateCustomTemplate(
+            @RequestParam(required = false, defaultValue = "0") int month,
+            @RequestParam(required = false, defaultValue = "2025") int year) {
+
+        try {
+            // Load the template file from static resources
+            Resource templateResource = new ClassPathResource("static/timesheet-in.xlsx");
+
+            if (!templateResource.exists()) {
+                log.error("Template file not found in static resources");
+                return ResponseEntity.notFound().build();
+            }
+
+            // Create month name for filename
+            String[] monthNames = {"January", "February", "March", "April", "May", "June",
+                                   "July", "August", "September", "October", "November", "December"};
+            String monthName = (month >= 0 && month < 12) ? monthNames[month] : "Unknown";
+
+            // Generate custom filename
+            String customFilename = String.format("timesheet-%s-%d.xlsx", monthName, year);
+
+            log.info("Generating custom template for {} {}: {}", monthName, year, customFilename);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + customFilename + "\"")
+                    .header(HttpHeaders.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    .body(templateResource);
+
+        } catch (Exception e) {
+            log.error("Error generating custom template", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @ExceptionHandler(StorageFileNotFoundException.class)
     public ResponseEntity<?> handleStorageFileNotFound(StorageFileNotFoundException exc) {
         return ResponseEntity.notFound().build();
