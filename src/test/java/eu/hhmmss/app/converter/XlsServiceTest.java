@@ -284,6 +284,174 @@ class XlsServiceTest {
         assertEquals("", contractRef);
     }
 
+    @Test
+    void testUpdatePeriodInExcelFile(@TempDir Path tempDir) throws IOException {
+        Path testFile = tempDir.resolve("test-update-period.xlsx");
+
+        // Create test file with period field
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Timesheet");
+
+            // Create meta fields including period
+            createMetaRow(sheet, 0, "Specific Contract Reference:", "TEST");
+            createMetaRow(sheet, 1, "Period (month/year):", "12/2024");
+
+            // Create header row
+            Row headerRow = sheet.createRow(10);
+            headerRow.createCell(1).setCellValue("Day");
+            headerRow.createCell(2).setCellValue("Tasks");
+            headerRow.createCell(3).setCellValue("Hours");
+
+            // Create data rows for all 31 days
+            for (int day = 1; day <= 31; day++) {
+                createDataRow(sheet, 10 + day, day, "Work", 8.0);
+            }
+
+            try (FileOutputStream fos = new FileOutputStream(testFile.toFile())) {
+                wb.write(fos);
+            }
+        }
+
+        // Update period to February 2024 (29 days - leap year)
+        XlsService.updatePeriod(testFile, "02/2024");
+
+        // Read back and verify
+        try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
+            Sheet sheet = wb.getSheet("Timesheet");
+            assertNotNull(sheet);
+
+            // Verify period was updated
+            Row periodRow = sheet.getRow(1);
+            String updatedPeriod = periodRow.getCell(2).getStringCellValue();
+            assertEquals("02/2024", updatedPeriod);
+
+            // Verify days 30 and 31 are cleared
+            Row day30Row = sheet.getRow(40); // headerRow(10) + day(30)
+            Row day31Row = sheet.getRow(41); // headerRow(10) + day(31)
+
+            // Day cell should be blank
+            assertTrue(day30Row.getCell(1) == null || day30Row.getCell(1).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+            assertTrue(day31Row.getCell(1) == null || day31Row.getCell(1).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+
+            // Task cell should be blank
+            assertTrue(day30Row.getCell(2) == null || day30Row.getCell(2).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+            assertTrue(day31Row.getCell(2) == null || day31Row.getCell(2).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+
+            // Hours cell should be blank
+            assertTrue(day30Row.getCell(3) == null || day30Row.getCell(3).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+            assertTrue(day31Row.getCell(3) == null || day31Row.getCell(3).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+
+            // Verify day 29 still exists (leap year)
+            Row day29Row = sheet.getRow(39);
+            assertEquals(29.0, day29Row.getCell(1).getNumericCellValue());
+        }
+    }
+
+    @Test
+    void testUpdatePeriodFor30DayMonth(@TempDir Path tempDir) throws IOException {
+        Path testFile = tempDir.resolve("test-update-period-30days.xlsx");
+
+        // Create test file
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Timesheet");
+
+            createMetaRow(sheet, 0, "Period (month/year):", "01/2024");
+
+            Row headerRow = sheet.createRow(5);
+            headerRow.createCell(1).setCellValue("Day");
+            headerRow.createCell(2).setCellValue("Tasks");
+            headerRow.createCell(3).setCellValue("Hours");
+
+            for (int day = 1; day <= 31; day++) {
+                createDataRow(sheet, 5 + day, day, "Work", 8.0);
+            }
+
+            try (FileOutputStream fos = new FileOutputStream(testFile.toFile())) {
+                wb.write(fos);
+            }
+        }
+
+        // Update to April (30 days)
+        XlsService.updatePeriod(testFile, "04/2024");
+
+        // Verify day 31 is cleared
+        try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
+            Sheet sheet = wb.getSheet("Timesheet");
+            Row day31Row = sheet.getRow(36); // headerRow(5) + day(31)
+
+            assertTrue(day31Row.getCell(1) == null || day31Row.getCell(1).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+
+            // Day 30 should still exist
+            Row day30Row = sheet.getRow(35);
+            assertEquals(30.0, day30Row.getCell(1).getNumericCellValue());
+        }
+    }
+
+    @Test
+    void testUpdatePeriodForFebruaryNonLeapYear(@TempDir Path tempDir) throws IOException {
+        Path testFile = tempDir.resolve("test-update-period-feb.xlsx");
+
+        // Create test file
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Timesheet");
+
+            createMetaRow(sheet, 0, "Period (month/year):", "01/2024");
+
+            Row headerRow = sheet.createRow(5);
+            headerRow.createCell(1).setCellValue("Day");
+            headerRow.createCell(2).setCellValue("Tasks");
+            headerRow.createCell(3).setCellValue("Hours");
+
+            for (int day = 1; day <= 31; day++) {
+                createDataRow(sheet, 5 + day, day, "Work", 8.0);
+            }
+
+            try (FileOutputStream fos = new FileOutputStream(testFile.toFile())) {
+                wb.write(fos);
+            }
+        }
+
+        // Update to February 2025 (28 days - non-leap year)
+        XlsService.updatePeriod(testFile, "02/2025");
+
+        // Verify days 29-31 are cleared
+        try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
+            Sheet sheet = wb.getSheet("Timesheet");
+
+            for (int day = 29; day <= 31; day++) {
+                Row dayRow = sheet.getRow(5 + day);
+                assertTrue(dayRow.getCell(1) == null || dayRow.getCell(1).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK,
+                        "Day " + day + " should be cleared");
+            }
+
+            // Day 28 should still exist
+            Row day28Row = sheet.getRow(33);
+            assertEquals(28.0, day28Row.getCell(1).getNumericCellValue());
+        }
+    }
+
+    @Test
+    void testUpdatePeriodWithMissingPeriodField(@TempDir Path tempDir) throws IOException {
+        Path testFile = tempDir.resolve("test-no-period-field.xlsx");
+
+        // Create file without period field
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Timesheet");
+
+            createMetaRow(sheet, 0, "Specific Contract Reference:", "TEST");
+
+            Row headerRow = sheet.createRow(5);
+            headerRow.createCell(1).setCellValue("Day");
+
+            try (FileOutputStream fos = new FileOutputStream(testFile.toFile())) {
+                wb.write(fos);
+            }
+        }
+
+        // Should not throw, just log warning
+        assertDoesNotThrow(() -> XlsService.updatePeriod(testFile, "01/2024"));
+    }
+
     // Helper methods to create test data
 
     private void createMetaRow(Sheet sheet, int rowNum, String label, String value) {
