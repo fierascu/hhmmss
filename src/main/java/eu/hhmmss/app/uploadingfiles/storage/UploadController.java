@@ -168,6 +168,14 @@ public class UploadController {
                 log.error("Failed to update period in Excel file", e);
                 // Continue processing even if update fails
             }
+        } else {
+            // If no period override, still apply weekend/holiday highlighting
+            try {
+                XlsService.highlightWeekendsAndHolidaysInFile(uploadedFilePath);
+            } catch (IOException e) {
+                log.error("Failed to highlight weekends/holidays in Excel file", e);
+                // Continue processing even if highlighting fails
+            }
         }
 
         // Step 3: Generate DOCX with extracted data

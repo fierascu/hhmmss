@@ -452,6 +452,155 @@ class XlsServiceTest {
         assertDoesNotThrow(() -> XlsService.updatePeriod(testFile, "01/2024"));
     }
 
+    @Test
+    void testHighlightWeekendsAndHolidaysInFile(@TempDir Path tempDir) throws IOException {
+        Path testFile = tempDir.resolve("test-highlight.xlsx");
+
+        // Create test file for January 2024
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Timesheet");
+
+            createMetaRow(sheet, 0, "Period (month/year):", "01/2024");
+
+            Row headerRow = sheet.createRow(5);
+            headerRow.createCell(1).setCellValue("Day");
+            headerRow.createCell(2).setCellValue("Tasks");
+            headerRow.createCell(3).setCellValue("Hours");
+
+            // Create data rows for January 2024 (31 days)
+            for (int day = 1; day <= 31; day++) {
+                createDataRow(sheet, 5 + day, day, "Work", 8.0);
+            }
+
+            try (FileOutputStream fos = new FileOutputStream(testFile.toFile())) {
+                wb.write(fos);
+            }
+        }
+
+        // Apply highlighting
+        XlsService.highlightWeekendsAndHolidaysInFile(testFile);
+
+        // Verify highlighting was applied
+        try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
+            Sheet sheet = wb.getSheet("Timesheet");
+            assertNotNull(sheet);
+
+            // January 1, 2024 is Monday (New Year's Day - should be highlighted as holiday)
+            Row day1Row = sheet.getRow(6); // headerRow(5) + day(1)
+            Cell day1Cell = day1Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day1Cell.getCellStyle().getFillForegroundColor());
+
+            // January 6, 2024 is Saturday (should be highlighted as weekend)
+            Row day6Row = sheet.getRow(11); // headerRow(5) + day(6)
+            Cell day6Cell = day6Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day6Cell.getCellStyle().getFillForegroundColor());
+
+            // January 7, 2024 is Sunday (should be highlighted as weekend)
+            Row day7Row = sheet.getRow(12); // headerRow(5) + day(7)
+            Cell day7Cell = day7Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day7Cell.getCellStyle().getFillForegroundColor());
+
+            // January 8, 2024 is Monday (regular weekday - should not be highlighted)
+            Row day8Row = sheet.getRow(13); // headerRow(5) + day(8)
+            Cell day8Cell = day8Row.getCell(1);
+            assertNotEquals(IndexedColors.YELLOW.getIndex(), day8Cell.getCellStyle().getFillForegroundColor());
+        }
+    }
+
+    @Test
+    void testHighlightWeekendsInFebruary2024(@TempDir Path tempDir) throws IOException {
+        Path testFile = tempDir.resolve("test-highlight-feb.xlsx");
+
+        // Create test file for February 2024
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Timesheet");
+
+            createMetaRow(sheet, 0, "Period (month/year):", "02/2024");
+
+            Row headerRow = sheet.createRow(5);
+            headerRow.createCell(1).setCellValue("Day");
+            headerRow.createCell(2).setCellValue("Tasks");
+
+            // Create data rows for February 2024 (29 days - leap year)
+            for (int day = 1; day <= 29; day++) {
+                createDataRow(sheet, 5 + day, day, "Work", 8.0);
+            }
+
+            try (FileOutputStream fos = new FileOutputStream(testFile.toFile())) {
+                wb.write(fos);
+            }
+        }
+
+        // Apply highlighting
+        XlsService.highlightWeekendsAndHolidaysInFile(testFile);
+
+        // Verify highlighting
+        try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
+            Sheet sheet = wb.getSheet("Timesheet");
+
+            // February 3, 2024 is Saturday
+            Row day3Row = sheet.getRow(8);
+            Cell day3Cell = day3Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day3Cell.getCellStyle().getFillForegroundColor());
+
+            // February 4, 2024 is Sunday
+            Row day4Row = sheet.getRow(9);
+            Cell day4Cell = day4Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day4Cell.getCellStyle().getFillForegroundColor());
+
+            // February 5, 2024 is Monday (weekday)
+            Row day5Row = sheet.getRow(10);
+            Cell day5Cell = day5Row.getCell(1);
+            assertNotEquals(IndexedColors.YELLOW.getIndex(), day5Cell.getCellStyle().getFillForegroundColor());
+        }
+    }
+
+    @Test
+    void testUpdatePeriodAlsoHighlights(@TempDir Path tempDir) throws IOException {
+        Path testFile = tempDir.resolve("test-update-and-highlight.xlsx");
+
+        // Create test file
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Timesheet");
+
+            createMetaRow(sheet, 0, "Period (month/year):", "12/2023");
+
+            Row headerRow = sheet.createRow(5);
+            headerRow.createCell(1).setCellValue("Day");
+            headerRow.createCell(2).setCellValue("Tasks");
+
+            for (int day = 1; day <= 31; day++) {
+                createDataRow(sheet, 5 + day, day, "Work", 8.0);
+            }
+
+            try (FileOutputStream fos = new FileOutputStream(testFile.toFile())) {
+                wb.write(fos);
+            }
+        }
+
+        // Update period to January 2024 (which should also apply highlighting)
+        XlsService.updatePeriod(testFile, "01/2024");
+
+        // Verify both period update and highlighting
+        try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
+            Sheet sheet = wb.getSheet("Timesheet");
+
+            // Verify period was updated
+            Row periodRow = sheet.getRow(0);
+            assertEquals("01/2024", periodRow.getCell(2).getStringCellValue());
+
+            // Verify January 1, 2024 (holiday) is highlighted
+            Row day1Row = sheet.getRow(6);
+            Cell day1Cell = day1Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day1Cell.getCellStyle().getFillForegroundColor());
+
+            // Verify a weekend is highlighted
+            Row day6Row = sheet.getRow(11); // January 6 is Saturday
+            Cell day6Cell = day6Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day6Cell.getCellStyle().getFillForegroundColor());
+        }
+    }
+
     // Helper methods to create test data
 
     private void createMetaRow(Sheet sheet, int rowNum, String label, String value) {

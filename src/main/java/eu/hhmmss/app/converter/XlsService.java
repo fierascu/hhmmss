@@ -12,6 +12,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
@@ -90,6 +91,101 @@ public class XlsService {
     }
 
     /**
+     * Applies yellow highlighting to weekend and holiday cells in an Excel timesheet.
+     * Can be called independently to highlight an existing file.
+     *
+     * @param xlsxPath path to the Excel file to update
+     * @throws IOException if file cannot be read or written
+     */
+    public static void highlightWeekendsAndHolidaysInFile(Path xlsxPath) throws IOException {
+        try (InputStream in = new FileInputStream(xlsxPath.toFile());
+             Workbook wb = new XSSFWorkbook(in)) {
+
+            Sheet sheet = wb.getSheet("Timesheet");
+            if (sheet == null) {
+                log.warn("Sheet 'Timesheet' not found in Excel: {}", xlsxPath);
+                return;
+            }
+
+            // Get the period from the file
+            String period = findRightSideValue(sheet, "Period (month/year):");
+            if (period == null || period.trim().isEmpty()) {
+                log.warn("No period found in Excel file, cannot determine dates for highlighting");
+                return;
+            }
+
+            // Parse period to MM/YYYY format if needed (handle various formats)
+            String formattedPeriod = parsePeriodToMMYYYY(period);
+            if (formattedPeriod == null) {
+                log.warn("Could not parse period '{}' for highlighting", period);
+                return;
+            }
+
+            highlightWeekendsAndHolidays(wb, sheet, formattedPeriod);
+
+            // Write back to file
+            try (FileOutputStream out = new FileOutputStream(xlsxPath.toFile())) {
+                wb.write(out);
+                log.info("Successfully highlighted weekends/holidays in Excel file: {}", xlsxPath);
+            }
+        }
+    }
+
+    /**
+     * Attempts to parse various period formats to MM/YYYY format.
+     * Handles: "MM/YYYY", "January 2024", "01-2024", etc.
+     *
+     * @param period the period string to parse
+     * @return formatted period as MM/YYYY, or null if parsing fails
+     */
+    private static String parsePeriodToMMYYYY(String period) {
+        if (period == null || period.trim().isEmpty()) {
+            return null;
+        }
+
+        String trimmed = period.trim();
+
+        // Already in MM/YYYY format
+        if (trimmed.matches("\\d{2}/\\d{4}")) {
+            return trimmed;
+        }
+
+        // Try to parse "January 2024" format
+        try {
+            String[] parts = trimmed.split(" ");
+            if (parts.length == 2) {
+                String monthName = parts[0];
+                String year = parts[1];
+
+                // Convert month name to number
+                int monthNum = switch (monthName.toLowerCase()) {
+                    case "january" -> 1;
+                    case "february" -> 2;
+                    case "march" -> 3;
+                    case "april" -> 4;
+                    case "may" -> 5;
+                    case "june" -> 6;
+                    case "july" -> 7;
+                    case "august" -> 8;
+                    case "september" -> 9;
+                    case "october" -> 10;
+                    case "november" -> 11;
+                    case "december" -> 12;
+                    default -> -1;
+                };
+
+                if (monthNum > 0) {
+                    return String.format("%02d/%s", monthNum, year);
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Failed to parse period as month name format: {}", period);
+        }
+
+        return null;
+    }
+
+    /**
      * Parses a period string in MM/YYYY format and returns the number of days in that month.
      *
      * @param period the period in MM/YYYY format (e.g., "01/2024")
@@ -161,6 +257,9 @@ public class XlsService {
                 adjustDayRows(sheet, daysInMonth);
             }
 
+            // Highlight weekends and holidays
+            highlightWeekendsAndHolidays(wb, sheet, newPeriod);
+
             // Write back to file
             try (FileOutputStream out = new FileOutputStream(xlsxPath.toFile())) {
                 wb.write(out);
@@ -224,6 +323,79 @@ public class XlsService {
         }
 
         log.info("Cleared task data for days {} to 31", daysInMonth + 1);
+    }
+
+    /**
+     * Highlights weekend and holiday cells with a yellow background.
+     * Applies to the day column (column B) for all days in the specified period.
+     *
+     * @param wb the workbook containing the sheet
+     * @param sheet the Excel sheet containing the timesheet
+     * @param period the period in MM/YYYY format
+     */
+    private static void highlightWeekendsAndHolidays(Workbook wb, Sheet sheet, String period) {
+        try {
+            // Parse the period to get year and month
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/yyyy");
+            YearMonth yearMonth = YearMonth.parse(period, formatter);
+            int year = yearMonth.getYear();
+            int month = yearMonth.getMonthValue();
+            int daysInMonth = yearMonth.lengthOfMonth();
+
+            // Find header row where column B equals "Day"
+            int headerRow = -1;
+            for (Row r : sheet) {
+                Cell c = r.getCell(1); // column B
+                if (c != null && "Day".equals(getCellString(c).trim())) {
+                    headerRow = r.getRowNum();
+                    break;
+                }
+            }
+
+            if (headerRow < 0) {
+                log.warn("Could not find timesheet header row to highlight weekends/holidays");
+                return;
+            }
+
+            // Create yellow fill style
+            CellStyle yellowStyle = wb.createCellStyle();
+            yellowStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+            yellowStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            // Load holidays (using static method since this is a static context)
+            HolidayService holidayService = new HolidayService();
+
+            int highlightedCount = 0;
+
+            // Process each day in the month
+            for (int day = 1; day <= daysInMonth; day++) {
+                LocalDate date = LocalDate.of(year, month, day);
+
+                // Check if this day is a weekend or holiday
+                if (HolidayService.isWeekend(date) || holidayService.isHoliday(date)) {
+                    Row row = sheet.getRow(headerRow + day);
+                    if (row != null) {
+                        // Apply yellow background to day cell (column B)
+                        Cell dayCell = row.getCell(1);
+                        if (dayCell != null) {
+                            // Preserve existing cell value and type, just change the style
+                            CellStyle newStyle = wb.createCellStyle();
+                            newStyle.cloneStyleFrom(dayCell.getCellStyle());
+                            newStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+                            newStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+                            dayCell.setCellStyle(newStyle);
+                            highlightedCount++;
+                        }
+                    }
+                }
+            }
+
+            log.info("Highlighted {} weekend/holiday days in Excel", highlightedCount);
+
+        } catch (Exception e) {
+            log.warn("Failed to highlight weekends/holidays in Excel", e);
+            // Don't fail the whole operation if highlighting fails
+        }
     }
 
     private static String getCellString(Cell c) {
