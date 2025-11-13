@@ -15,8 +15,12 @@ public class CustomErrorController implements ErrorController {
     public String handleError(@RequestParam(required = false) String theme,
                               HttpServletRequest request,
                               Model model) {
-        // Set theme (default is terminal, classic is alternative)
-        model.addAttribute("theme", "classic".equals(theme) ? "classic" : "terminal");
+        // Set theme (default is ascii, other options: terminal, classic)
+        String selectedTheme = theme != null ? theme : "ascii";
+        if (!"ascii".equals(selectedTheme) && !"terminal".equals(selectedTheme) && !"classic".equals(selectedTheme)) {
+            selectedTheme = "ascii";
+        }
+        model.addAttribute("theme", selectedTheme);
 
         Object status = request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
         Object message = request.getAttribute(RequestDispatcher.ERROR_MESSAGE);

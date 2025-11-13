@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org"
-      th:replace="~{${theme == 'classic' ? 'layout-classic' : 'layout'} :: layout(title='Upload Timesheet', content=~{::content})}">
+      th:replace="~{${theme == 'classic' ? 'layout-classic' : (theme == 'terminal' ? 'layout' : 'layout-ascii')} :: layout(title='Upload Timesheet', content=~{::content})}">
 
 <th:block th:fragment="content">
     <!-- Error Message -->
@@ -34,7 +34,7 @@
     </div>
 
     <!-- Upload Form -->
-    <form th:action="${theme == 'classic' ? '/?theme=classic' : '/'}" enctype="multipart/form-data" method="POST">
+    <form th:action="${theme == 'classic' ? '/?theme=classic' : (theme == 'terminal' ? '/?theme=terminal' : '/')}" enctype="multipart/form-data" method="POST">
         <div class="form-group">
             <label for="fileInput">Select Excel Timesheet or ZIP file</label>
             <input id="fileInput" name="file" type="file"

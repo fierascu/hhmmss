@@ -53,8 +53,12 @@ public class UploadController {
             session.removeAttribute("uploadError");
         }
 
-        // Set theme (default is terminal, classic is alternative)
-        model.addAttribute("theme", "classic".equals(theme) ? "classic" : "terminal");
+        // Set theme (default is ascii, other options: terminal, classic)
+        String selectedTheme = theme != null ? theme : "ascii";
+        if (!"ascii".equals(selectedTheme) && !"terminal".equals(selectedTheme) && !"classic".equals(selectedTheme)) {
+            selectedTheme = "ascii";
+        }
+        model.addAttribute("theme", selectedTheme);
 
         model.addAttribute("files", uploadService.loadAll()
                 .map(path -> MvcUriComponentsBuilder.fromMethodName(
@@ -124,7 +128,13 @@ public class UploadController {
     }
 
     private String buildRedirectUrl(String theme) {
-        return "classic".equals(theme) ? "redirect:/?theme=classic" : "redirect:/";
+        if ("classic".equals(theme)) {
+            return "redirect:/?theme=classic";
+        } else if ("terminal".equals(theme)) {
+            return "redirect:/?theme=terminal";
+        } else {
+            return "redirect:/"; // Default to ASCII
+        }
     }
 
     /**

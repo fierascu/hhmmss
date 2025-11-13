@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org">
+
+<th:block th:fragment="footer (theme)">
+    <div class="footer">
+        <p>Excel to DOCX and PDF converter with ZIP batch processing</p>
+        <p style="margin-top: 1rem; font-size: 0.8rem; line-height: 1.5;">
+            <strong>Privacy Notice:</strong> For security, files are stored for 1 day maximum and automatically deleted.
+            No personal information is ever logged.
+            <a th:href="@{https://github.com/fierascu/hhmmss}"
+               th:style="${theme == 'classic' ? 'color: rgba(255, 255, 255, 0.9); text-decoration: underline;' : (theme == 'terminal' ? 'color: var(--link-color); text-decoration: none;' : 'color: #666666; text-decoration: underline;')}"
+               target="_blank"
+               rel="noopener noreferrer">View source code</a>
+            to audit our security practices.
+        </p>
+        <div class="theme-switch">
+            <th:block th:if="${theme == 'ascii'}">
+                <a href="/?theme=terminal">terminal theme</a> |
+                <a href="/?theme=classic">classic theme</a>
+            </th:block>
+            <th:block th:if="${theme == 'terminal'}">
+                <a href="/">ascii theme</a> |
+                <a href="/?theme=classic">classic theme</a>
+            </th:block>
+            <th:block th:if="${theme == 'classic'}">
+                <a href="/">ascii theme</a> |
+                <a href="/?theme=terminal">terminal theme</a>
+            </th:block>
+        </div>
+    </div>
+</th:block>
+
+</html>
