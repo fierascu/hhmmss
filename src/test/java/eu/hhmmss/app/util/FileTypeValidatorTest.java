@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class FileTypeValidatorTest {
 
     @Test
-    void testValidateExcelFile_ValidXlsx() throws IOException {
+    void testValidateExcelFile_ValidXlsx() {
         // XLSX files start with PK (ZIP magic bytes)
         byte[] xlsxHeader = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
         InputStream inputStream = new ByteArrayInputStream(xlsxHeader);
@@ -20,7 +20,7 @@ class FileTypeValidatorTest {
     }
 
     @Test
-    void testValidateExcelFile_ValidXlsm() throws IOException {
+    void testValidateExcelFile_ValidXlsm() {
         // XLSM files also start with PK (ZIP magic bytes)
         byte[] xlsmHeader = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
         InputStream inputStream = new ByteArrayInputStream(xlsmHeader);
@@ -29,7 +29,7 @@ class FileTypeValidatorTest {
     }
 
     @Test
-    void testValidateExcelFile_ValidXlsb() throws IOException {
+    void testValidateExcelFile_ValidXlsb() {
         // XLSB files also start with PK (ZIP magic bytes)
         byte[] xlsbHeader = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
         InputStream inputStream = new ByteArrayInputStream(xlsbHeader);
@@ -38,7 +38,7 @@ class FileTypeValidatorTest {
     }
 
     @Test
-    void testValidateExcelFile_ValidXls() throws IOException {
+    void testValidateExcelFile_ValidXls() {
         // XLS files start with OLE2 magic bytes
         byte[] xlsHeader = {(byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0, (byte) 0xA1, (byte) 0xB1, 0x1A, (byte) 0xE1};
         InputStream inputStream = new ByteArrayInputStream(xlsHeader);
@@ -47,7 +47,7 @@ class FileTypeValidatorTest {
     }
 
     @Test
-    void testValidateFile_ValidZip() throws IOException {
+    void testValidateFile_ValidZip() {
         // ZIP files start with PK (ZIP magic bytes)
         byte[] zipHeader = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
         InputStream inputStream = new ByteArrayInputStream(zipHeader);

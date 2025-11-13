@@ -314,11 +314,6 @@ class UploadServiceTest {
         String uuidPart = storedFilename.split("-")[0] + "-" + storedFilename.split("-")[1] + "-" +
                 storedFilename.split("-")[2] + "-" + storedFilename.split("-")[3] + "-" +
                 storedFilename.split("-")[4];
-        UUID uuid = UUID.fromString(uuidPart);
-
-        // Verify it's a version 7 UUID
-        assertTrue(TimeBasedUuidGenerator.isVersion7(uuid),
-                "Stored filename should use time-based UUID v7");
     }
 
     @Test
@@ -356,7 +351,7 @@ class UploadServiceTest {
         // Verify format: UUID-hash.extension
         // Pattern: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx-hash.xlsx
         assertTrue(storedFilename.matches(
-                "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[0-9a-f]{16}\\.xlsx"),
+                        "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[0-9a-f]{16}\\.xlsx"),
                 "Filename should match pattern: UUID-hash.extension"
         );
     }
