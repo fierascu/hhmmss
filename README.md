@@ -10,11 +10,16 @@ This application provides a simple web interface for uploading Excel timesheets 
 
 ### Core Functionality
 - **Excel to Word Conversion**: Upload Excel timesheets (.xls, .xlsx, .xlsm, .xlsb) and convert them to formatted DOCX files
+- **PDF Export**: Convert Excel and Word documents to PDF format using LibreOffice in headless mode
 - **Batch Processing**: Process multiple Excel files at once by uploading a ZIP archive
 - **Smart File Validation**: Comprehensive file type validation to ensure only valid Excel and ZIP files are processed
 - **Security Features**: Executable file detection and blocking to prevent malicious uploads
+- **Throttling & Rate Limiting**: Semaphore-based concurrency control to prevent resource exhaustion
+- **Automatic File Cleanup**: Scheduled daily cleanup of temporary files with configurable retention period
 
 ### User Interface
+- **Multiple UI Themes**: Choose from ASCII art, Classic, or Terminal themes for different aesthetics
+- **ASCII Loading Animation**: Retro-style animated spinner during file processing
 - **Modern Responsive Design**: Clean, Excel-themed UI built with Thymeleaf templates
 - **Real-time File Validation**: Upload button activates only when valid files are selected
 - **Error Handling**: User-friendly error messages displayed inline
@@ -40,8 +45,11 @@ This application provides a simple web interface for uploading Excel timesheets 
 - **Build Tool**: Maven
 - **Language**: Java
 - **File Processing**: Apache POI (Excel), Apache POI-OOXML (Word)
+- **PDF Conversion**: JODConverter with LibreOffice
 - **Logging**: SLF4J with Lombok
 - **Testing**: JUnit 5, Spring Boot Test
+- **Concurrency**: Java Semaphores for request throttling
+- **Scheduling**: Spring Scheduled tasks for file cleanup
 
 ## Project Structure
 
@@ -51,6 +59,7 @@ src/
 │   ├── java/eu/hhmmss/app/
 │   │   ├── converter/           # Core conversion logic
 │   │   │   ├── DocService.java          # Word document generation
+│   │   │   ├── PdfService.java          # PDF conversion via LibreOffice
 │   │   │   ├── XlsService.java          # Excel parsing
 │   │   │   ├── ZipProcessingService.java # Batch ZIP processing
 │   │   │   └── HhmmssDto.java           # Data transfer object
@@ -58,15 +67,22 @@ src/
 │   │   │   └── storage/         # File upload and storage
 │   │   │       ├── UploadController.java
 │   │   │       ├── UploadService.java
+│   │   │       ├── ThrottlingService.java       # Request rate limiting
+│   │   │       ├── FileCleanupService.java      # Scheduled file cleanup
 │   │   │       ├── GlobalExceptionHandler.java
 │   │   │       └── Storage exceptions
 │   │   └── util/                # Utilities
-│   │       └── FileTypeValidator.java   # File validation
+│   │       ├── FileTypeValidator.java   # File validation
+│   │       ├── FileHasher.java          # File integrity hashing
+│   │       └── TimeBasedUuidGenerator.java # Unique ID generation
 │   └── resources/
 │       ├── templates/           # Thymeleaf templates
-│       │   ├── layout.html             # Main layout
-│       │   ├── upload.html             # Upload form
-│       │   └── error.html              # Error page
+│       │   ├── layout-ascii.html        # ASCII art theme
+│       │   ├── layout-classic.html      # Classic theme
+│       │   ├── layout.html              # Terminal theme
+│       │   ├── upload.html              # Upload form
+│       │   ├── footer.html              # Shared footer
+│       │   └── error.html               # Error page
 │       └── timesheet-template.docx     # Word template
 └── test/                        # Comprehensive unit tests
 ```
@@ -154,6 +170,9 @@ The Docker setup includes:
 - `JAVA_OPTS` - JVM options (default: `-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0`)
 - `SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE` - Max upload size (default: 128KB)
 - `JODCONVERTER_LOCAL_ENABLED` - Enable/disable LibreOffice integration (default: true)
+- `APP_THROTTLING_MAX_CONCURRENT_REQUESTS` - Max concurrent conversions (default: 2)
+- `APP_THROTTLING_TIMEOUT_SECONDS` - Throttling timeout in seconds (default: 30)
+- `CLEANUP_RETENTION_DAYS` - Days to retain uploaded files before cleanup (default: 7)
 
 ### Running Locally (Without Docker)
 
@@ -190,12 +209,43 @@ Or with Docker:
 docker run --rm -v "$(pwd)":/build -w /build maven:3.9-eclipse-temurin-21-alpine mvn test
 ```
 
+### Deploying to Fly.io
+
+The application includes configuration for deployment to Fly.io:
+
+1. Install the Fly.io CLI:
+```bash
+curl -L https://fly.io/install.sh | sh
+```
+
+2. Login to Fly.io:
+```bash
+fly auth login
+```
+
+3. Deploy the application:
+```bash
+fly deploy
+```
+
+4. Open the deployed application:
+```bash
+fly open
+```
+
+**Fly.io Configuration:**
+- Application configured with 1GB RAM, shared CPU
+- Auto-start/stop machines for cost optimization
+- HTTPS enforced by default
+- Region: iad (US East)
+
 ## Usage
 
 1. **Single File Conversion**:
    - Click "Select Excel Timesheet or ZIP file"
    - Choose an Excel file (.xls, .xlsx, .xlsm, .xlsb)
    - Click "Upload and Convert"
+   - Watch the ASCII loading animation during processing
    - Download the generated DOCX file
 
 2. **Batch Processing**:
@@ -203,6 +253,12 @@ docker run --rm -v "$(pwd)":/build -w /build maven:3.9-eclipse-temurin-21-alpine
    - Upload the ZIP file
    - View the processing results showing successful and failed conversions
    - Download the result ZIP file containing all converted DOCX files
+
+3. **UI Theme Selection**:
+   - Access different themes via URL parameters:
+     - ASCII theme (default): `http://localhost:8080/`
+     - Classic theme: `http://localhost:8080/?theme=classic`
+     - Terminal theme: `http://localhost:8080/?theme=terminal`
 
 ## Development History
 
@@ -229,15 +285,17 @@ docker run --rm -v "$(pwd)":/build -w /build maven:3.9-eclipse-temurin-21-alpine
 
 ### Recent Enhancements
 
-- Added modern, Excel-themed UI with responsive design
-- Implemented form validation with real-time feedback
-- Added Excel-themed favicon
-- Enhanced error messages with inline display
+- **PDF Export**: Integrated LibreOffice-based PDF conversion for Excel and Word files
+- **UI Themes**: Added ASCII art, Classic, and Terminal UI themes
+- **ASCII Loading Animation**: Retro-style spinner during file processing
+- **Fly.io Deployment**: Cloud deployment configuration with auto-scaling
+- **Request Throttling**: Semaphore-based concurrency control to prevent resource exhaustion
+- **File Cleanup Service**: Automated daily cleanup of temporary files
+- **File Integrity**: SHA-256 hashing for uploaded files
+- **Time-based UUIDs**: Sortable unique identifiers for file operations
 - Implemented ZIP batch processing capability
 - Added comprehensive file type validation (extension, MIME type, file signature)
 - Created global exception handler for consistent error handling
-- Added detailed processing results for batch operations
-- Implemented secure temporary file storage
 - Added comprehensive unit test coverage
 
 ## Testing
@@ -245,9 +303,13 @@ docker run --rm -v "$(pwd)":/build -w /build maven:3.9-eclipse-temurin-21-alpine
 The project includes extensive unit tests covering:
 - Excel parsing (XlsService)
 - Word document generation (DocService)
+- PDF conversion (PdfService)
 - ZIP batch processing (ZipProcessingService)
 - File validation (FileTypeValidator)
 - Upload handling (UploadService, UploadController)
+- Request throttling (ThrottlingService)
+- File cleanup (FileCleanupService)
+- File hashing (FileHasher)
 - Error handling (GlobalExceptionHandler)
 
 Test coverage includes edge cases, error scenarios, and security validations.
@@ -256,16 +318,20 @@ Test coverage includes edge cases, error scenarios, and security validations.
 
 - **File Type Validation**: Multi-level validation (extension, MIME type, magic bytes)
 - **Executable Detection**: Blocks upload of executable files
-- **Temporary Storage**: Files stored securely with UUID-based naming
+- **Temporary Storage**: Files stored securely with time-based UUID naming
 - **Error Sanitization**: No sensitive information exposed in error messages
+- **Request Throttling**: Prevents DoS attacks through concurrent request limiting
+- **Automatic Cleanup**: Removes temporary files after configurable retention period
+- **File Integrity**: SHA-256 hashing for upload verification
 
 ## Future Enhancements
 
-- Export to PDF format
-- Cloud hosting deployment
 - Enhanced template customization options
 - User authentication and multi-tenancy
 - Advanced scheduling and formatting options
+- REST API for programmatic access
+- Webhook support for integration with other systems
+- Custom branding and theming options
 
 ## Contributing
 
