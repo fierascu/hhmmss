@@ -102,7 +102,58 @@
         <a href="/timesheet-in.xlsx" download class="btn btn-secondary" style="display: inline-block; margin-top: 0.5rem;">
             Download timesheet-in.xlsx
         </a>
+
+        <div style="margin-top: 1.5rem;">
+            <div class="form-group">
+                <label for="monthSelector">Month</label>
+                <select id="monthSelector" class="form-control" style="max-width: 200px;">
+                    <option value="0">January</option>
+                    <option value="1">February</option>
+                    <option value="2">March</option>
+                    <option value="3">April</option>
+                    <option value="4">May</option>
+                    <option value="5">June</option>
+                    <option value="6">July</option>
+                    <option value="7">August</option>
+                    <option value="8">September</option>
+                    <option value="9">October</option>
+                    <option value="10">November</option>
+                    <option value="11">December</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-top: 1rem;">
+                <label for="yearSelector">Year</label>
+                <select id="yearSelector" class="form-control" style="max-width: 200px;">
+                    <!-- Years will be populated by JavaScript -->
+                </select>
+            </div>
+        </div>
     </div>
+
+    <script>
+        // Set current month and year as defaults
+        (function() {
+            var now = new Date();
+            var currentMonth = now.getMonth();
+            var currentYear = now.getFullYear();
+
+            // Set current month
+            document.getElementById('monthSelector').value = currentMonth;
+
+            // Populate year selector with range from 5 years ago to 2 years in the future
+            var yearSelector = document.getElementById('yearSelector');
+            for (var year = currentYear - 5; year <= currentYear + 2; year++) {
+                var option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                if (year === currentYear) {
+                    option.selected = true;
+                }
+                yearSelector.appendChild(option);
+            }
+        })();
+    </script>
 </th:block>
 
 </html>
