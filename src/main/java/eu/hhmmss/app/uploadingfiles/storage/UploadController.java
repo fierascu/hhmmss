@@ -91,6 +91,7 @@ public class UploadController {
     @PostMapping("/")
     public String handleFileUpload(@RequestParam("file") MultipartFile file,
                                    @RequestParam(required = false) String theme,
+                                   @RequestParam(required = false) String period,
                                    RedirectAttributes redirectAttributes) {
         // Acquire permit for throttling - throws TooManyRequestsException if unavailable
         throttlingService.acquirePermit();
@@ -108,9 +109,9 @@ public class UploadController {
 
             // Check if the file is a ZIP archive
             if (isZipFile(originalFilename)) {
-                return handleZipFile(uploadedFilePath, uuidFilename, originalFilename, theme, redirectAttributes);
+                return handleZipFile(uploadedFilePath, uuidFilename, originalFilename, theme, period, redirectAttributes);
             } else {
-                return handleExcelFile(uploadedFilePath, uuidFilename, originalFilename, theme, redirectAttributes);
+                return handleExcelFile(uploadedFilePath, uuidFilename, originalFilename, theme, period, redirectAttributes);
             }
 
         } catch (StorageException e) {
@@ -147,12 +148,18 @@ public class UploadController {
      * Handles processing of a single Excel file.
      */
     private String handleExcelFile(Path uploadedFilePath, String uuidFilename, String originalFilename,
-                                    String theme, RedirectAttributes redirectAttributes) throws IOException, OfficeException {
+                                    String theme, String period, RedirectAttributes redirectAttributes) throws IOException, OfficeException {
         // Step 2: Parse the uploaded XLS file
         HhmmssDto extractedData = XlsService.readTimesheet(uploadedFilePath);
         log.info("Extracted data from uploaded file: {} tasks, {} meta fields",
                 extractedData.getTasks().size(),
                 extractedData.getMeta().size());
+
+        // Override period if provided by user
+        if (period != null && !period.trim().isEmpty()) {
+            extractedData.getMeta().put("Period (month/year):", formatPeriod(period));
+            log.info("Overriding period with user-provided value: {}", period);
+        }
 
         // Step 3: Generate DOCX with extracted data
         // Maintain traceability: use input filename as base for output files
@@ -222,8 +229,15 @@ public class UploadController {
      * Handles processing of a ZIP file containing multiple Excel files.
      */
     private String handleZipFile(Path zipFilePath, String uuidFilename, String originalFilename, String theme,
-                                  RedirectAttributes redirectAttributes) throws IOException {
+                                  String period, RedirectAttributes redirectAttributes) throws IOException {
         log.info("Processing ZIP file: {}", originalFilename);
+
+        // Note: For ZIP files, we process each Excel file individually
+        // The period override would need to be applied per file in ZipProcessingService
+        // For now, we log it but don't apply it to ZIP processing
+        if (period != null && !period.trim().isEmpty()) {
+            log.info("Period parameter provided ({}), but currently not applied to ZIP batch processing", period);
+        }
 
         // Prepare template
         Resource templateResource = new ClassPathResource("timesheet-template.docx");
@@ -319,6 +333,31 @@ public class UploadController {
     @ExceptionHandler(StorageFileNotFoundException.class)
     public ResponseEntity<?> handleStorageFileNotFound(StorageFileNotFoundException exc) {
         return ResponseEntity.notFound().build();
+    }
+
+    /**
+     * Formats a period from YYYY-MM format to a more readable format.
+     * Example: "2024-01" -> "01/2024"
+     *
+     * @param period the period in YYYY-MM format
+     * @return formatted period as MM/YYYY
+     */
+    private String formatPeriod(String period) {
+        if (period == null || period.trim().isEmpty()) {
+            return "";
+        }
+
+        try {
+            String[] parts = period.split("-");
+            if (parts.length == 2) {
+                return parts[1] + "/" + parts[0]; // MM/YYYY
+            }
+        } catch (Exception e) {
+            log.warn("Failed to format period: {}", period, e);
+        }
+
+        // Return as-is if formatting fails
+        return period;
     }
 
 }
