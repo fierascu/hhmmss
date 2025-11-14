@@ -1,7 +1,5 @@
 package eu.hhmmss.app.converter;
 
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
@@ -24,8 +22,8 @@ class DocServiceTest {
         HhmmssDto hhmmssXlsxFormat = XlsService.readTimesheet(xlsxFilePath);
         assertNotNull(hhmmssXlsxFormat);
         assertEquals(30, hhmmssXlsxFormat.getTasks().size());
-        assertEquals("work", hhmmssXlsxFormat.getTasks().get(30).getKey());
-        assertEquals(8.5d, hhmmssXlsxFormat.getTasks().get(30).getValue());
+        assertEquals("work", hhmmssXlsxFormat.getTasks().get(30).getTask());
+        assertEquals(8.5d, hhmmssXlsxFormat.getTasks().get(30).getHoursFlexibilityPeriod());
         assertEquals(6, hhmmssXlsxFormat.getMeta().size());
         assertEquals("contract_no", hhmmssXlsxFormat.getMeta().get("Specific Contract Reference:"));
 
@@ -50,9 +48,12 @@ class DocServiceTest {
         dto.setMeta(meta);
 
         // Add tasks for all 31 days (to test clearing)
-        Map<Integer, Pair<String, Double>> tasks = new HashMap<>();
+        Map<Integer, DayData> tasks = new HashMap<>();
         for (int day = 1; day <= 31; day++) {
-            tasks.put(day, new ImmutablePair<>("Work", 8.0));
+            tasks.put(day, DayData.builder()
+                    .task("Work")
+                    .hoursFlexibilityPeriod(8.0)
+                    .build());
         }
         dto.setTasks(tasks);
 
@@ -99,9 +100,12 @@ class DocServiceTest {
         dto.setMeta(meta);
 
         // Add tasks for all 31 days
-        Map<Integer, Pair<String, Double>> tasks = new HashMap<>();
+        Map<Integer, DayData> tasks = new HashMap<>();
         for (int day = 1; day <= 31; day++) {
-            tasks.put(day, new ImmutablePair<>("Development", 7.5));
+            tasks.put(day, DayData.builder()
+                    .task("Development")
+                    .hoursFlexibilityPeriod(7.5)
+                    .build());
         }
         dto.setTasks(tasks);
 
@@ -139,9 +143,12 @@ class DocServiceTest {
         dto.setMeta(meta);
 
         // Add tasks for all 31 days
-        Map<Integer, Pair<String, Double>> tasks = new HashMap<>();
+        Map<Integer, DayData> tasks = new HashMap<>();
         for (int day = 1; day <= 31; day++) {
-            tasks.put(day, new ImmutablePair<>("Testing", 6.0));
+            tasks.put(day, DayData.builder()
+                    .task("Testing")
+                    .hoursFlexibilityPeriod(6.0)
+                    .build());
         }
         dto.setTasks(tasks);
 
@@ -181,8 +188,11 @@ class DocServiceTest {
         dto.setMeta(meta);
 
         // Add tasks
-        Map<Integer, Pair<String, Double>> tasks = new HashMap<>();
-        tasks.put(31, new ImmutablePair<>("Work", 8.0));
+        Map<Integer, DayData> tasks = new HashMap<>();
+        tasks.put(31, DayData.builder()
+                .task("Work")
+                .hoursFlexibilityPeriod(8.0)
+                .build());
         dto.setTasks(tasks);
 
         Path templatePath = Path.of("src/test/resources/timesheet-out.docx");
