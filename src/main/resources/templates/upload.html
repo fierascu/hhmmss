@@ -3,11 +3,11 @@
       th:replace="~{${theme == 'classic' ? 'layout-classic' : (theme == 'terminal' ? 'layout' : 'layout-ascii')} :: layout(title='Upload Timesheet', content=~{::content})}">
 
 <th:block th:fragment="content">
-    <!-- Upload Form -->
+    <!-- Upload and Convert Form -->
     <form th:action="${theme == 'classic' ? '/?theme=classic' : (theme == 'terminal' ? '/?theme=terminal' : '/')}"
           enctype="multipart/form-data" method="POST">
         <div class="form-group">
-            <label for="fileInput">Select Excel Timesheet or ZIP file</label>
+            <label for="fileInput">Upload and Convert (as-is)</label>
             <input id="fileInput" name="file" type="file"
                    accept=".xls,.xlsx,.xlsm,.xlsb,.zip"/>
         </div>
@@ -17,23 +17,26 @@
     </form>
 
     <!-- Generate with New Period Form -->
-    <div th:if="${generatedFiles != null and !#lists.isEmpty(generatedFiles) and !isZipResult}" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #444;">
-        <form th:action="${theme == 'classic' ? '/regenerate?theme=classic' : (theme == 'terminal' ? '/regenerate?theme=terminal' : '/regenerate')}"
-              method="POST">
-            <input type="hidden" name="uuidFilename" th:value="${uuidFilename}"/>
+    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #444;">
+        <form th:action="${theme == 'classic' ? '/generate?theme=classic' : (theme == 'terminal' ? '/generate?theme=terminal' : '/generate')}"
+              enctype="multipart/form-data" method="POST">
             <div class="form-group">
-                <label for="monthInput">Generate with New Period</label>
+                <label for="fileInput2">Generate with New Period</label>
+                <input id="fileInput2" name="file" type="file"
+                       accept=".xls,.xlsx,.xlsm,.xlsb"/>
+                <small style="display: block; margin-top: 0.5rem; opacity: 0.7;">
+                    Upload Excel file and specify a new period
+                </small>
+            </div>
+            <div class="form-group" style="margin-top: 1rem;">
                 <div style="display: flex; gap: 1rem; align-items: flex-start;">
                     <div style="flex: 1;">
                         <input id="monthInput" name="period" type="month" required
                                placeholder="YYYY-MM"
                                style="width: 100%; padding: 0.5rem; font-family: monospace;"/>
-                        <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">
-                            Select a new period to regenerate the timesheet
-                        </small>
                     </div>
-                    <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
-                        Regenerate Timesheet
+                    <button id="generateButton" type="submit" class="btn btn-primary" disabled style="white-space: nowrap;">
+                        Generate Timesheet
                     </button>
                 </div>
             </div>
@@ -41,6 +44,7 @@
     </div>
 
     <script>
+        // Upload and Convert form
         document.getElementById('fileInput').addEventListener('change', function() {
             var uploadButton = document.getElementById('uploadButton');
             var file = this.files[0];
@@ -61,23 +65,45 @@
             uploadButton.disabled = !isValidFile;
         });
 
-        // Add loading animation on form submit
-        document.querySelector('form').addEventListener('submit', function() {
-            var uploadButton = document.getElementById('uploadButton');
-            uploadButton.disabled = true;
+        // Generate with New Period form
+        document.getElementById('fileInput2').addEventListener('change', function() {
+            var generateButton = document.getElementById('generateButton');
+            var file = this.files[0];
 
-            // ASCII spinner frames
-            var spinnerFrames = ['|', '/', '-', '\\'];
-            var currentFrame = 0;
+            if (!file) {
+                generateButton.disabled = true;
+                return;
+            }
 
-            // Update button text with spinner animation
-            var spinnerInterval = setInterval(function() {
-                uploadButton.textContent = 'Processing ' + spinnerFrames[currentFrame];
-                currentFrame = (currentFrame + 1) % spinnerFrames.length;
-            }, 150); // Update every 150ms
+            // Check if the file has an Excel extension (no ZIP for generate)
+            var fileName = file.name.toLowerCase();
+            var isValidFile = fileName.endsWith('.xls') ||
+                             fileName.endsWith('.xlsx') ||
+                             fileName.endsWith('.xlsm') ||
+                             fileName.endsWith('.xlsb');
 
-            // Store interval ID so it can be cleared if needed
-            uploadButton.dataset.spinnerInterval = spinnerInterval;
+            generateButton.disabled = !isValidFile;
+        });
+
+        // Add loading animation on form submit for both forms
+        document.querySelectorAll('form').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                var button = form.querySelector('button[type="submit"]');
+                button.disabled = true;
+
+                // ASCII spinner frames
+                var spinnerFrames = ['|', '/', '-', '\\'];
+                var currentFrame = 0;
+
+                // Update button text with spinner animation
+                var spinnerInterval = setInterval(function() {
+                    button.textContent = 'Processing ' + spinnerFrames[currentFrame];
+                    currentFrame = (currentFrame + 1) % spinnerFrames.length;
+                }, 150); // Update every 150ms
+
+                // Store interval ID so it can be cleared if needed
+                button.dataset.spinnerInterval = spinnerInterval;
+            });
         });
     </script>
 

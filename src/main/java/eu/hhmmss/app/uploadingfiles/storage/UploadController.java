@@ -324,29 +324,33 @@ public class UploadController {
         }
     }
 
-    @PostMapping("/regenerate")
-    public String handleRegenerate(@RequestParam("uuidFilename") String uuidFilename,
-                                   @RequestParam("period") String period,
-                                   @RequestParam(required = false) String theme,
-                                   RedirectAttributes redirectAttributes) {
+    @PostMapping("/generate")
+    public String handleGenerate(@RequestParam("file") MultipartFile file,
+                                 @RequestParam("period") String period,
+                                 @RequestParam(required = false) String theme,
+                                 RedirectAttributes redirectAttributes) {
         // Acquire permit for throttling
         throttlingService.acquirePermit();
 
         try {
+            // Validate inputs
             if (period == null || period.trim().isEmpty()) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Period is required for regeneration");
+                redirectAttributes.addFlashAttribute("errorMessage", "Period is required for generation");
                 return buildRedirectUrl(theme);
             }
+
+            // Validate file size
+            validateFileSize(file);
 
             String formattedPeriod = formatPeriod(period);
-            log.info("Regenerating timesheet for {} with new period: {}", uuidFilename, formattedPeriod);
+            log.info("Generating timesheet with new period: {}", formattedPeriod);
 
-            // Load the uploaded Excel file
+            // Store the uploaded file
+            String uuidFilename = uploadService.store(file);
+            log.info("Stored uploaded file as: {}", uuidFilename);
+
             Path uploadedFilePath = uploadService.load(uuidFilename);
-            if (!uploadedFilePath.toFile().exists()) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Original file not found. Please upload again.");
-                return buildRedirectUrl(theme);
-            }
+            String originalFilename = file.getOriginalFilename();
 
             // Update period in the Excel file (also adjusts days and highlights weekends/holidays)
             try {
@@ -357,13 +361,13 @@ public class UploadController {
                 return buildRedirectUrl(theme);
             }
 
-            // Re-read the timesheet data with updated period
+            // Read the timesheet data with updated period
             HhmmssDto extractedData = XlsService.readTimesheet(uploadedFilePath);
-            log.info("Re-extracted data with new period: {} tasks, {} meta fields",
+            log.info("Extracted data with new period: {} tasks, {} meta fields",
                     extractedData.getTasks().size(),
                     extractedData.getMeta().size());
 
-            // Regenerate DOCX with new period
+            // Generate DOCX with new period
             String extractedFilename = uuidFilename + ".docx";
             Path extractedFilePath = uploadService.load(extractedFilename);
 
@@ -372,25 +376,25 @@ public class UploadController {
             Files.copy(templateResource.getInputStream(), tempTemplate, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
             DocService.addDataToDocs(tempTemplate, extractedData, extractedFilePath);
-            log.info("Regenerated timesheet DOCX file as: {}", extractedFilename);
+            log.info("Generated timesheet DOCX file as: {}", extractedFilename);
 
             Files.deleteIfExists(tempTemplate);
 
-            // Regenerate PDF from input XLS
+            // Generate PDF from input XLS
             String xlsPdfFilename = uuidFilename + ".pdf";
             Path xlsPdfPath = uploadService.load(xlsPdfFilename);
             pdfService.convertXlsToPdf(uploadedFilePath, xlsPdfPath);
-            log.info("Regenerated PDF from input XLS as: {}", xlsPdfFilename);
+            log.info("Generated PDF from input XLS as: {}", xlsPdfFilename);
 
-            // Regenerate PDF from output DOC
+            // Generate PDF from output DOC
             String docPdfFilename = extractedFilename + ".pdf";
             Path docPdfPath = uploadService.load(docPdfFilename);
             pdfService.convertDocToPdf(extractedFilePath, docPdfPath);
-            log.info("Regenerated PDF from output DOC as: {}", docPdfFilename);
+            log.info("Generated PDF from output DOC as: {}", docPdfFilename);
 
             // Build list of generated files for display
             java.util.List<String> generatedFiles = new java.util.ArrayList<>();
-            generatedFiles.add(uuidFilename + " (Uploaded Excel)");
+            generatedFiles.add(uuidFilename + " (Uploaded Excel with Period " + formattedPeriod + ")");
             generatedFiles.add(extractedFilename + " (Generated Timesheet DOCX)");
             generatedFiles.add(xlsPdfFilename + " (Input Excel as PDF)");
             generatedFiles.add(docPdfFilename + " (Timesheet as PDF)");
@@ -407,17 +411,27 @@ public class UploadController {
                     UploadController.class, "serveFile", docPdfFilename).build().toUri().toString());
 
             // Pass data to the view
+            redirectAttributes.addFlashAttribute("originalFilename", originalFilename);
             redirectAttributes.addFlashAttribute("uuidFilename", uuidFilename);
             redirectAttributes.addFlashAttribute("generatedFiles", generatedFiles);
             redirectAttributes.addFlashAttribute("generatedFileUrls", generatedFileUrls);
             redirectAttributes.addFlashAttribute("isZipResult", false);
             redirectAttributes.addFlashAttribute("successMessage",
-                    "Timesheet regenerated successfully with period " + formattedPeriod + "! " +
+                    "Timesheet generated successfully with period " + formattedPeriod + "! " +
                     "Extracted " + extractedData.getTasks().size() + " tasks and generated PDFs.");
 
+        } catch (StorageException e) {
+            log.error("Storage error during file generation", e);
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        } catch (IllegalStateException e) {
+            log.error("Invalid file format", e);
+            redirectAttributes.addFlashAttribute("errorMessage", "Invalid file format: " + e.getMessage());
+        } catch (IOException e) {
+            log.error("Error processing template", e);
+            redirectAttributes.addFlashAttribute("errorMessage", "Error processing template: " + e.getMessage());
         } catch (Exception e) {
-            log.error("Unexpected error during regeneration", e);
-            redirectAttributes.addFlashAttribute("errorMessage", "An error occurred during regeneration: " + e.getMessage());
+            log.error("Unexpected error during generation", e);
+            redirectAttributes.addFlashAttribute("errorMessage", "An unexpected error occurred: " + e.getMessage());
         } finally {
             throttlingService.releasePermit();
         }
