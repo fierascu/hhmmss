@@ -61,6 +61,14 @@
             uploadButton.disabled = !isValidFile;
         });
 
+        // Pre-populate month input with current month and year
+        (function() {
+            var monthInput = document.getElementById('monthInput');
+            var now = new Date();
+            var year = now.getFullYear();
+            var month = String(now.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+            monthInput.value = year + '-' + month;
+        })();
 
         // Add loading animation on form submit for both forms
         document.querySelectorAll('form').forEach(function(form) {
