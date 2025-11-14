@@ -1,6 +1,5 @@
 package eu.hhmmss.app.converter;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -103,20 +102,20 @@ class XlsServiceTest {
         assertNotNull(result);
         assertEquals(3, result.getTasks().size());
 
-        Pair<String, Double> day1 = result.getTasks().get(1);
+        DayData day1 = result.getTasks().get(1);
         assertNotNull(day1);
-        assertEquals("Development", day1.getKey());
-        assertEquals(8.0, day1.getValue());
+        assertEquals("Development", day1.getTask());
+        assertEquals(8.0, day1.getHoursFlexibilityPeriod());
 
-        Pair<String, Double> day2 = result.getTasks().get(2);
+        DayData day2 = result.getTasks().get(2);
         assertNotNull(day2);
-        assertEquals("Testing", day2.getKey());
-        assertEquals(7.5, day2.getValue());
+        assertEquals("Testing", day2.getTask());
+        assertEquals(7.5, day2.getHoursFlexibilityPeriod());
 
-        Pair<String, Double> day3 = result.getTasks().get(3);
+        DayData day3 = result.getTasks().get(3);
         assertNotNull(day3);
-        assertEquals("Code Review", day3.getKey());
-        assertEquals(6.0, day3.getValue());
+        assertEquals("Code Review", day3.getTask());
+        assertEquals(6.0, day3.getHoursFlexibilityPeriod());
     }
 
     @Test
@@ -180,10 +179,10 @@ class XlsServiceTest {
         HhmmssDto result = XlsService.readTimesheet(testFile);
 
         assertNotNull(result);
-        Pair<String, Double> day1 = result.getTasks().get(1);
+        DayData day1 = result.getTasks().get(1);
         assertNotNull(day1);
-        assertEquals("Development", day1.getKey());
-        assertEquals(8.0, day1.getValue());
+        assertEquals("Development", day1.getTask());
+        assertEquals(8.0, day1.getHoursFlexibilityPeriod());
     }
 
     @Test
@@ -214,10 +213,10 @@ class XlsServiceTest {
         HhmmssDto result = XlsService.readTimesheet(testFile);
 
         assertNotNull(result);
-        Pair<String, Double> day1 = result.getTasks().get(1);
+        DayData day1 = result.getTasks().get(1);
         assertNotNull(day1);
-        assertEquals("", day1.getKey());
-        assertEquals(8.0, day1.getValue());
+        assertEquals("", day1.getTask());
+        assertEquals(8.0, day1.getHoursFlexibilityPeriod());
     }
 
     @Test
@@ -248,10 +247,10 @@ class XlsServiceTest {
         HhmmssDto result = XlsService.readTimesheet(testFile);
 
         assertNotNull(result);
-        Pair<String, Double> day1 = result.getTasks().get(1);
+        DayData day1 = result.getTasks().get(1);
         assertNotNull(day1);
-        assertEquals("Holiday", day1.getKey());
-        assertEquals(0.0, day1.getValue());
+        assertEquals("Holiday", day1.getTask());
+        assertEquals(0.0, day1.getHoursFlexibilityPeriod());
     }
 
     @Test
@@ -335,9 +334,13 @@ class XlsServiceTest {
             assertTrue(day30Row.getCell(2) == null || day30Row.getCell(2).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
             assertTrue(day31Row.getCell(2) == null || day31Row.getCell(2).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
 
-            // Hours cell should be blank
-            assertTrue(day30Row.getCell(3) == null || day30Row.getCell(3).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
-            assertTrue(day31Row.getCell(3) == null || day31Row.getCell(3).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+            // All hours cells (columns 3-8) should be blank
+            for (int col = 3; col <= 8; col++) {
+                assertTrue(day30Row.getCell(col) == null || day30Row.getCell(col).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK,
+                        "Day 30 column " + col + " should be blank");
+                assertTrue(day31Row.getCell(col) == null || day31Row.getCell(col).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK,
+                        "Day 31 column " + col + " should be blank");
+            }
 
             // Verify day 29 still exists (leap year)
             Row day29Row = sheet.getRow(39);
@@ -611,6 +614,11 @@ class XlsServiceTest {
         Row row = sheet.createRow(rowNum);
         row.createCell(1).setCellValue((double) day);
         row.createCell(2).setCellValue(task);
-        row.createCell(3).setCellValue(hours);
+        row.createCell(3).setCellValue(hours); // Flexibility period
+        row.createCell(4).setCellValue(0.0);   // Outside flexibility
+        row.createCell(5).setCellValue(0.0);   // Saturdays
+        row.createCell(6).setCellValue(0.0);   // Sundays/holidays
+        row.createCell(7).setCellValue(0.0);   // Standby
+        row.createCell(8).setCellValue(0.0);   // Non-invoiceable
     }
 }
