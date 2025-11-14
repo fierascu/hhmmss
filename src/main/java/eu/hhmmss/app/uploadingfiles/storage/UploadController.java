@@ -91,7 +91,6 @@ public class UploadController {
     @PostMapping("/")
     public String handleFileUpload(@RequestParam("file") MultipartFile file,
                                    @RequestParam(required = false) String theme,
-                                   @RequestParam(required = false) String period,
                                    RedirectAttributes redirectAttributes) {
         // Acquire permit for throttling - throws TooManyRequestsException if unavailable
         throttlingService.acquirePermit();
@@ -109,9 +108,9 @@ public class UploadController {
 
             // Check if the file is a ZIP archive
             if (isZipFile(originalFilename)) {
-                return handleZipFile(uploadedFilePath, uuidFilename, originalFilename, theme, period, redirectAttributes);
+                return handleZipFile(uploadedFilePath, uuidFilename, originalFilename, theme, redirectAttributes);
             } else {
-                return handleExcelFile(uploadedFilePath, uuidFilename, originalFilename, theme, period, redirectAttributes);
+                return handleExcelFile(uploadedFilePath, uuidFilename, originalFilename, theme, redirectAttributes);
             }
 
         } catch (StorageException e) {
@@ -148,34 +147,19 @@ public class UploadController {
      * Handles processing of a single Excel file.
      */
     private String handleExcelFile(Path uploadedFilePath, String uuidFilename, String originalFilename,
-                                    String theme, String period, RedirectAttributes redirectAttributes) throws IOException, OfficeException {
+                                    String theme, RedirectAttributes redirectAttributes) throws IOException, OfficeException {
         // Step 2: Parse the uploaded XLS file
         HhmmssDto extractedData = XlsService.readTimesheet(uploadedFilePath);
         log.info("Extracted data from uploaded file: {} tasks, {} meta fields",
                 extractedData.getTasks().size(),
                 extractedData.getMeta().size());
 
-        // Override period if provided by user
-        if (period != null && !period.trim().isEmpty()) {
-            String formattedPeriod = formatPeriod(period);
-            extractedData.getMeta().put("Period (month/year):", formattedPeriod);
-            log.info("Overriding period with user-provided value: {}", period);
-
-            // Also update the period in the uploaded Excel file itself
-            try {
-                XlsService.updatePeriod(uploadedFilePath, formattedPeriod);
-            } catch (IOException e) {
-                log.error("Failed to update period in Excel file", e);
-                // Continue processing even if update fails
-            }
-        } else {
-            // If no period override, still apply weekend/holiday highlighting
-            try {
-                XlsService.highlightWeekendsAndHolidaysInFile(uploadedFilePath);
-            } catch (IOException e) {
-                log.error("Failed to highlight weekends/holidays in Excel file", e);
-                // Continue processing even if highlighting fails
-            }
+        // Apply weekend/holiday highlighting to the uploaded file
+        try {
+            XlsService.highlightWeekendsAndHolidaysInFile(uploadedFilePath);
+        } catch (IOException e) {
+            log.error("Failed to highlight weekends/holidays in Excel file", e);
+            // Continue processing even if highlighting fails
         }
 
         // Step 3: Generate DOCX with extracted data
@@ -246,15 +230,8 @@ public class UploadController {
      * Handles processing of a ZIP file containing multiple Excel files.
      */
     private String handleZipFile(Path zipFilePath, String uuidFilename, String originalFilename, String theme,
-                                  String period, RedirectAttributes redirectAttributes) throws IOException {
+                                  RedirectAttributes redirectAttributes) throws IOException {
         log.info("Processing ZIP file: {}", originalFilename);
-
-        // Note: For ZIP files, we process each Excel file individually
-        // The period override would need to be applied per file in ZipProcessingService
-        // For now, we log it but don't apply it to ZIP processing
-        if (period != null && !period.trim().isEmpty()) {
-            log.info("Period parameter provided ({}), but currently not applied to ZIP batch processing", period);
-        }
 
         // Prepare template
         Resource templateResource = new ClassPathResource("timesheet-template.docx");
@@ -345,6 +322,107 @@ public class UploadController {
             }
             log.debug("XLSX file size validation passed: {} bytes (max: {} bytes)", fileSize, maxXlsxSize);
         }
+    }
+
+    @PostMapping("/regenerate")
+    public String handleRegenerate(@RequestParam("uuidFilename") String uuidFilename,
+                                   @RequestParam("period") String period,
+                                   @RequestParam(required = false) String theme,
+                                   RedirectAttributes redirectAttributes) {
+        // Acquire permit for throttling
+        throttlingService.acquirePermit();
+
+        try {
+            if (period == null || period.trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Period is required for regeneration");
+                return buildRedirectUrl(theme);
+            }
+
+            String formattedPeriod = formatPeriod(period);
+            log.info("Regenerating timesheet for {} with new period: {}", uuidFilename, formattedPeriod);
+
+            // Load the uploaded Excel file
+            Path uploadedFilePath = uploadService.load(uuidFilename);
+            if (!uploadedFilePath.toFile().exists()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Original file not found. Please upload again.");
+                return buildRedirectUrl(theme);
+            }
+
+            // Update period in the Excel file (also adjusts days and highlights weekends/holidays)
+            try {
+                XlsService.updatePeriod(uploadedFilePath, formattedPeriod);
+            } catch (IOException e) {
+                log.error("Failed to update period in Excel file", e);
+                redirectAttributes.addFlashAttribute("errorMessage", "Failed to update period: " + e.getMessage());
+                return buildRedirectUrl(theme);
+            }
+
+            // Re-read the timesheet data with updated period
+            HhmmssDto extractedData = XlsService.readTimesheet(uploadedFilePath);
+            log.info("Re-extracted data with new period: {} tasks, {} meta fields",
+                    extractedData.getTasks().size(),
+                    extractedData.getMeta().size());
+
+            // Regenerate DOCX with new period
+            String extractedFilename = uuidFilename + ".docx";
+            Path extractedFilePath = uploadService.load(extractedFilename);
+
+            Resource templateResource = new ClassPathResource("timesheet-template.docx");
+            Path tempTemplate = Files.createTempFile("template-", ".docx");
+            Files.copy(templateResource.getInputStream(), tempTemplate, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            DocService.addDataToDocs(tempTemplate, extractedData, extractedFilePath);
+            log.info("Regenerated timesheet DOCX file as: {}", extractedFilename);
+
+            Files.deleteIfExists(tempTemplate);
+
+            // Regenerate PDF from input XLS
+            String xlsPdfFilename = uuidFilename + ".pdf";
+            Path xlsPdfPath = uploadService.load(xlsPdfFilename);
+            pdfService.convertXlsToPdf(uploadedFilePath, xlsPdfPath);
+            log.info("Regenerated PDF from input XLS as: {}", xlsPdfFilename);
+
+            // Regenerate PDF from output DOC
+            String docPdfFilename = extractedFilename + ".pdf";
+            Path docPdfPath = uploadService.load(docPdfFilename);
+            pdfService.convertDocToPdf(extractedFilePath, docPdfPath);
+            log.info("Regenerated PDF from output DOC as: {}", docPdfFilename);
+
+            // Build list of generated files for display
+            java.util.List<String> generatedFiles = new java.util.ArrayList<>();
+            generatedFiles.add(uuidFilename + " (Uploaded Excel)");
+            generatedFiles.add(extractedFilename + " (Generated Timesheet DOCX)");
+            generatedFiles.add(xlsPdfFilename + " (Input Excel as PDF)");
+            generatedFiles.add(docPdfFilename + " (Timesheet as PDF)");
+
+            // Build file URLs for download links
+            java.util.List<String> generatedFileUrls = new java.util.ArrayList<>();
+            generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
+                    UploadController.class, "serveFile", uuidFilename).build().toUri().toString());
+            generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
+                    UploadController.class, "serveFile", extractedFilename).build().toUri().toString());
+            generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
+                    UploadController.class, "serveFile", xlsPdfFilename).build().toUri().toString());
+            generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
+                    UploadController.class, "serveFile", docPdfFilename).build().toUri().toString());
+
+            // Pass data to the view
+            redirectAttributes.addFlashAttribute("uuidFilename", uuidFilename);
+            redirectAttributes.addFlashAttribute("generatedFiles", generatedFiles);
+            redirectAttributes.addFlashAttribute("generatedFileUrls", generatedFileUrls);
+            redirectAttributes.addFlashAttribute("isZipResult", false);
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Timesheet regenerated successfully with period " + formattedPeriod + "! " +
+                    "Extracted " + extractedData.getTasks().size() + " tasks and generated PDFs.");
+
+        } catch (Exception e) {
+            log.error("Unexpected error during regeneration", e);
+            redirectAttributes.addFlashAttribute("errorMessage", "An error occurred during regeneration: " + e.getMessage());
+        } finally {
+            throttlingService.releasePermit();
+        }
+
+        return buildRedirectUrl(theme);
     }
 
     @ExceptionHandler(StorageFileNotFoundException.class)
