@@ -227,21 +227,16 @@ public class XlsService {
             for (Row r : sheet) {
                 Cell labelCell = r.getCell(1); // column B
                 if (labelCell != null && "Period (month/year):".equals(getCellString(labelCell))) {
-                    // Find the first non-empty cell to the right and update it
-                    for (int i = 2; i <= Math.max(r.getLastCellNum(), 10); i++) {
-                        Cell valueCell = r.getCell(i);
-                        if (valueCell == null) {
-                            valueCell = r.createCell(i);
-                        }
-                        String currentValue = getCellString(valueCell).trim();
-                        if (!currentValue.isEmpty() || i == 2) {
-                            // Update this cell
-                            valueCell.setCellValue(newPeriod);
-                            updated = true;
-                            log.info("Updated period in Excel from '{}' to '{}'", currentValue, newPeriod);
-                            break;
-                        }
+                    // Put the value exactly one cell to the right of the label
+                    int valueCellIndex = labelCell.getColumnIndex() + 1;
+                    Cell valueCell = r.getCell(valueCellIndex);
+                    if (valueCell == null) {
+                        valueCell = r.createCell(valueCellIndex);
                     }
+                    String currentValue = getCellString(valueCell).trim();
+                    valueCell.setCellValue(newPeriod);
+                    updated = true;
+                    log.info("Updated period in Excel from '{}' to '{}' at column {}", currentValue, newPeriod, valueCellIndex);
                     break;
                 }
             }
