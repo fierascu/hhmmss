@@ -308,14 +308,14 @@ public class XlsService {
                     }
                 }
 
-                // Clear task cell (column C - COL_TASK)
-                Cell taskCell = row.getCell(COL_TASK);
+                // Clear task cell (column C - index 2)
+                Cell taskCell = row.getCell(2);
                 if (taskCell != null) {
                     taskCell.setBlank();
                 }
 
-                // Clear hours cell (column D - COL_HOURS)
-                Cell hoursCell = row.getCell(COL_HOURS);
+                // Clear hours cell (column D - index 3)
+                Cell hoursCell = row.getCell(3);
                 if (hoursCell != null) {
                     hoursCell.setBlank();
                 }
