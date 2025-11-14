@@ -506,9 +506,10 @@ class UploadControllerTest {
     @Test
     void testHandleGenerateWithValidPeriod() throws Exception {
         String period = "2024-11";
-        Path testTemplatePath = Paths.get("src/main/resources/timesheet-template.xlsx");
+        // Use existing path to avoid file I/O issues in unit test
+        Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
 
-        when(uploadService.load("2024-11.xlsx")).thenReturn(Paths.get("/tmp/uploads/2024-11.xlsx"));
+        when(uploadService.load("2024-11.xlsx")).thenReturn(testExistingPath);
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate")
                         .param("period", period))
@@ -528,8 +529,10 @@ class UploadControllerTest {
         // Should default to current month and year
         java.time.LocalDate now = java.time.LocalDate.now();
         String expectedFilename = String.format("%d-%02d.xlsx", now.getYear(), now.getMonthValue());
+        // Use existing path to avoid file I/O issues in unit test
+        Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
 
-        when(uploadService.load(expectedFilename)).thenReturn(Paths.get("/tmp/uploads/" + expectedFilename));
+        when(uploadService.load(expectedFilename)).thenReturn(testExistingPath);
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate"))
                 .andExpect(status().is3xxRedirection())
@@ -546,8 +549,10 @@ class UploadControllerTest {
         // Empty period should default to current month and year
         java.time.LocalDate now = java.time.LocalDate.now();
         String expectedFilename = String.format("%d-%02d.xlsx", now.getYear(), now.getMonthValue());
+        // Use existing path to avoid file I/O issues in unit test
+        Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
 
-        when(uploadService.load(expectedFilename)).thenReturn(Paths.get("/tmp/uploads/" + expectedFilename));
+        when(uploadService.load(expectedFilename)).thenReturn(testExistingPath);
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate")
                         .param("period", ""))
@@ -562,7 +567,10 @@ class UploadControllerTest {
     @Test
     void testHandleGenerateWithTheme() throws Exception {
         String period = "2024-11";
-        when(uploadService.load("2024-11.xlsx")).thenReturn(Paths.get("/tmp/uploads/2024-11.xlsx"));
+        // Use existing path to avoid file I/O issues in unit test
+        Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
+
+        when(uploadService.load("2024-11.xlsx")).thenReturn(testExistingPath);
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate")
                         .param("period", period)
