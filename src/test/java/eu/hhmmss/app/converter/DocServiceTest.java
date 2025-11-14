@@ -1,6 +1,7 @@
 package eu.hhmmss.app.converter;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
@@ -49,7 +50,7 @@ class DocServiceTest {
         dto.setMeta(meta);
 
         // Add tasks for all 31 days (to test clearing)
-        Map<Integer, ImmutablePair<String, Double>> tasks = new HashMap<>();
+        Map<Integer, Pair<String, Double>> tasks = new HashMap<>();
         for (int day = 1; day <= 31; day++) {
             tasks.put(day, new ImmutablePair<>("Work", 8.0));
         }
@@ -98,7 +99,7 @@ class DocServiceTest {
         dto.setMeta(meta);
 
         // Add tasks for all 31 days
-        Map<Integer, ImmutablePair<String, Double>> tasks = new HashMap<>();
+        Map<Integer, Pair<String, Double>> tasks = new HashMap<>();
         for (int day = 1; day <= 31; day++) {
             tasks.put(day, new ImmutablePair<>("Development", 7.5));
         }
@@ -138,7 +139,7 @@ class DocServiceTest {
         dto.setMeta(meta);
 
         // Add tasks for all 31 days
-        Map<Integer, ImmutablePair<String, Double>> tasks = new HashMap<>();
+        Map<Integer, Pair<String, Double>> tasks = new HashMap<>();
         for (int day = 1; day <= 31; day++) {
             tasks.put(day, new ImmutablePair<>("Testing", 6.0));
         }
@@ -180,7 +181,7 @@ class DocServiceTest {
         dto.setMeta(meta);
 
         // Add tasks
-        Map<Integer, ImmutablePair<String, Double>> tasks = new HashMap<>();
+        Map<Integer, Pair<String, Double>> tasks = new HashMap<>();
         tasks.put(31, new ImmutablePair<>("Work", 8.0));
         dto.setTasks(tasks);
 
