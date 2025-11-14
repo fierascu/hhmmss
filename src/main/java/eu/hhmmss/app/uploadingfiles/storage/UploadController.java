@@ -325,17 +325,18 @@ public class UploadController {
     }
 
     @PostMapping("/generate")
-    public String handleGenerate(@RequestParam("period") String period,
+    public String handleGenerate(@RequestParam(required = false) String period,
                                  @RequestParam(required = false) String theme,
                                  RedirectAttributes redirectAttributes) {
         // Acquire permit for throttling
         throttlingService.acquirePermit();
 
         try {
-            // Validate inputs
+            // Default to current month and year if period not provided
             if (period == null || period.trim().isEmpty()) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Period is required for generation");
-                return buildRedirectUrl(theme);
+                java.time.LocalDate now = java.time.LocalDate.now();
+                period = String.format("%d-%02d", now.getYear(), now.getMonthValue());
+                log.info("No period provided, defaulting to current month: {}", period);
             }
 
             String formattedPeriod = formatPeriod(period);
