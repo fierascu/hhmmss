@@ -344,13 +344,13 @@ public class UploadController {
             // Load the static Excel template
             Resource excelTemplateResource = new ClassPathResource("timesheet-template.xlsx");
 
-            // Generate a UUID filename for the new Excel file
-            String uuidFilename = UUID.randomUUID().toString() + ".xlsx";
-            Path generatedExcelPath = uploadService.load(uuidFilename);
+            // Generate filename based on period (e.g., "2025-11.xlsx")
+            String filename = period + ".xlsx";
+            Path generatedExcelPath = uploadService.load(filename);
 
             // Copy template to the new file
             Files.copy(excelTemplateResource.getInputStream(), generatedExcelPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            log.info("Created new Excel file from template: {}", uuidFilename);
+            log.info("Created new Excel file from template: {}", filename);
 
             // Update period in the Excel file (also adjusts days and highlights weekends/holidays)
             try {
@@ -363,12 +363,12 @@ public class UploadController {
 
             // Build list of generated files for display (only Excel)
             java.util.List<String> generatedFiles = new java.util.ArrayList<>();
-            generatedFiles.add(uuidFilename + " (Generated Excel for " + formattedPeriod + ")");
+            generatedFiles.add(filename + " (Generated Excel for " + formattedPeriod + ")");
 
             // Build file URLs for download links
             java.util.List<String> generatedFileUrls = new java.util.ArrayList<>();
             generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
-                    UploadController.class, "serveFile", uuidFilename).build().toUri().toString());
+                    UploadController.class, "serveFile", filename).build().toUri().toString());
 
             // Pass data to the view
             redirectAttributes.addFlashAttribute("generatedFiles", generatedFiles);
