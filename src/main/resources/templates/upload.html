@@ -3,41 +3,41 @@
       th:replace="~{${theme == 'classic' ? 'layout-classic' : (theme == 'terminal' ? 'layout' : 'layout-ascii')} :: layout(title='Upload Timesheet', content=~{::content})}">
 
 <th:block th:fragment="content">
-    <!-- Upload and Convert Form -->
-    <form th:action="${theme == 'classic' ? '/?theme=classic' : (theme == 'terminal' ? '/?theme=terminal' : '/')}"
-          enctype="multipart/form-data" method="POST">
+    <!-- Generate New Timesheet Form -->
+    <form th:action="${theme == 'classic' ? '/generate?theme=classic' : (theme == 'terminal' ? '/generate?theme=terminal' : '/generate')}"
+          method="POST">
         <div class="form-group">
-            <label for="fileInput">Upload and convert timesheet</label>
+            <label for="monthInput">Generate timesheet for selected period</label>
             <div style="display: flex; gap: 1rem; align-items: flex-start; margin-top: 0.5rem;">
                 <div style="flex: 1;">
-                    <input id="fileInput" name="file" type="file"
-                           accept=".xls,.xlsx,.xlsm,.xlsb,.zip"
-                           style="width: 100%;"/>
+                    <input id="monthInput" name="period" type="month" required
+                           placeholder="YYYY-MM"
+                           style="width: 100%; padding: 0.5rem; font-family: monospace;"/>
+                    <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">
+                        Select period to generate a new timesheet from template
+                    </small>
                 </div>
-                <button id="uploadButton" type="submit" class="btn btn-primary" disabled style="white-space: nowrap;">
-                    Convert
+                <button id="generateButton" type="submit" class="btn btn-primary" style="white-space: nowrap;">
+                    Generate
                 </button>
             </div>
         </div>
     </form>
 
-    <!-- Generate New Timesheet Form -->
+    <!-- Upload and Convert Form -->
     <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #444;">
-        <form th:action="${theme == 'classic' ? '/generate?theme=classic' : (theme == 'terminal' ? '/generate?theme=terminal' : '/generate')}"
-              method="POST">
+        <form th:action="${theme == 'classic' ? '/?theme=classic' : (theme == 'terminal' ? '/?theme=terminal' : '/')}"
+              enctype="multipart/form-data" method="POST">
             <div class="form-group">
-                <label for="monthInput">Generate timesheet for selected period</label>
+                <label for="fileInput">Upload and convert timesheet</label>
                 <div style="display: flex; gap: 1rem; align-items: flex-start; margin-top: 0.5rem;">
                     <div style="flex: 1;">
-                        <input id="monthInput" name="period" type="month" required
-                               placeholder="YYYY-MM"
-                               style="width: 100%; padding: 0.5rem; font-family: monospace;"/>
-                        <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">
-                            Select period to generate a new timesheet from template
-                        </small>
+                        <input id="fileInput" name="file" type="file"
+                               accept=".xls,.xlsx,.xlsm,.xlsb,.zip"
+                               style="width: 100%;"/>
                     </div>
-                    <button id="generateButton" type="submit" class="btn btn-primary" style="white-space: nowrap;">
-                        Generate
+                    <button id="uploadButton" type="submit" class="btn btn-primary" disabled style="white-space: nowrap;">
+                        Convert
                     </button>
                 </div>
             </div>
