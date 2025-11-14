@@ -242,9 +242,10 @@ public class XlsService {
                         }
                     }
 
-                    // If no existing value found, create one in the cell immediately to the right
+                    // If no existing value found, create one TWO cells to the right of the label
+                    // (label in column B, skip column C, value in column D)
                     if (valueCell == null) {
-                        valueCellIndex = labelCell.getColumnIndex() + 1;
+                        valueCellIndex = labelCell.getColumnIndex() + 2;
                         valueCell = r.getCell(valueCellIndex);
                         if (valueCell == null) {
                             valueCell = r.createCell(valueCellIndex);
