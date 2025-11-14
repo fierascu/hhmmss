@@ -284,7 +284,7 @@ public class XlsService {
 
     /**
      * Adjusts day rows in the Excel timesheet to match the number of days in the month.
-     * Clears task and hours data for days beyond the month's length.
+     * Adds missing day rows and clears task/hours data for days beyond the month's length.
      *
      * @param sheet the Excel sheet containing the timesheet
      * @param daysInMonth the number of days in the selected month
@@ -305,9 +305,29 @@ public class XlsService {
             return;
         }
 
-        log.info("Adjusting Excel to show {} days (clearing days {} to 31)", daysInMonth, daysInMonth + 1);
+        log.info("Adjusting Excel to show {} days", daysInMonth);
 
-        // Clear data for days beyond the month's length
+        // First, ensure all day rows exist (add missing ones)
+        for (int day = 1; day <= daysInMonth; day++) {
+            int rowIndex = headerRow + day;
+            Row row = sheet.getRow(rowIndex);
+            if (row == null) {
+                row = sheet.createRow(rowIndex);
+                log.info("Created missing row for day {}", day);
+            }
+
+            // Ensure day number cell exists
+            Cell dayCell = row.getCell(1);
+            if (dayCell == null || getCellString(dayCell).trim().isEmpty()) {
+                if (dayCell == null) {
+                    dayCell = row.createCell(1);
+                }
+                dayCell.setCellValue((double) day);
+                log.info("Set day number {} in row {}", day, rowIndex);
+            }
+        }
+
+        // Then, clear data for days beyond the month's length
         for (int day = daysInMonth + 1; day <= 31; day++) {
             int rowIndex = headerRow + day;
             Row row = sheet.getRow(rowIndex);
@@ -336,7 +356,7 @@ public class XlsService {
             }
         }
 
-        log.info("Cleared task data for days {} to 31", daysInMonth + 1);
+        log.info("Adjusted day rows: added/verified days 1-{}, cleared days {} to 31", daysInMonth, daysInMonth + 1);
     }
 
     /**
