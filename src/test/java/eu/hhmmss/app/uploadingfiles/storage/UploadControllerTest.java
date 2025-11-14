@@ -573,4 +573,23 @@ class UploadControllerTest {
         verify(throttlingService, times(1)).acquirePermit();
         verify(throttlingService, times(1)).releasePermit();
     }
+
+    @Test
+    void testHandleGenerateUsesCache() throws Exception {
+        String period = "2024-11";
+        Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
+
+        // Return a path that actually exists to simulate cache hit
+        when(uploadService.load("2024-11.xlsx")).thenReturn(testExistingPath);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate")
+                        .param("period", period))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attributeExists("successMessage"))
+                .andExpect(flash().attribute("successMessage", containsString("retrieved from cache")));
+
+        verify(throttlingService, times(1)).acquirePermit();
+        verify(throttlingService, times(1)).releasePermit();
+    }
 }

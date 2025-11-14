@@ -341,24 +341,33 @@ public class UploadController {
             String formattedPeriod = formatPeriod(period);
             log.info("Generating new timesheet from template with period: {}", formattedPeriod);
 
-            // Load the static Excel template
-            Resource excelTemplateResource = new ClassPathResource("timesheet-template.xlsx");
-
             // Generate filename based on period (e.g., "2025-11.xlsx")
             String filename = period + ".xlsx";
             Path generatedExcelPath = uploadService.load(filename);
 
-            // Copy template to the new file
-            Files.copy(excelTemplateResource.getInputStream(), generatedExcelPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            log.info("Created new Excel file from template: {}", filename);
+            // Check if file already exists (caching mechanism)
+            boolean isFromCache = Files.exists(generatedExcelPath);
+            if (isFromCache) {
+                log.info("Using cached Excel file for period {}: {}", formattedPeriod, filename);
+            } else {
+                // File doesn't exist, generate it
+                log.info("Generating new Excel file for period {}: {}", formattedPeriod, filename);
 
-            // Update period in the Excel file (also adjusts days and highlights weekends/holidays)
-            try {
-                XlsService.updatePeriod(generatedExcelPath, formattedPeriod);
-            } catch (IOException e) {
-                log.error("Failed to update period in Excel file", e);
-                redirectAttributes.addFlashAttribute("errorMessage", "Failed to update period: " + e.getMessage());
-                return buildRedirectUrl(theme);
+                // Load the static Excel template
+                Resource excelTemplateResource = new ClassPathResource("timesheet-template.xlsx");
+
+                // Copy template to the new file
+                Files.copy(excelTemplateResource.getInputStream(), generatedExcelPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                log.info("Created new Excel file from template: {}", filename);
+
+                // Update period in the Excel file (also adjusts days and highlights weekends/holidays)
+                try {
+                    XlsService.updatePeriod(generatedExcelPath, formattedPeriod);
+                } catch (IOException e) {
+                    log.error("Failed to update period in Excel file", e);
+                    redirectAttributes.addFlashAttribute("errorMessage", "Failed to update period: " + e.getMessage());
+                    return buildRedirectUrl(theme);
+                }
             }
 
             // Build list of generated files for display (only Excel)
@@ -374,9 +383,14 @@ public class UploadController {
             redirectAttributes.addFlashAttribute("generatedFiles", generatedFiles);
             redirectAttributes.addFlashAttribute("generatedFileUrls", generatedFileUrls);
             redirectAttributes.addFlashAttribute("isZipResult", false);
-            redirectAttributes.addFlashAttribute("successMessage",
-                    "Excel timesheet generated successfully for period " + formattedPeriod + "! " +
-                    "Download it, fill it out, and upload it to generate DOCX and PDF formats.");
+
+            // Different message for cached vs newly generated files
+            String message = isFromCache
+                ? "Excel timesheet for period " + formattedPeriod + " retrieved from cache! " +
+                  "Download it, fill it out, and upload it to generate DOCX and PDF formats."
+                : "Excel timesheet generated successfully for period " + formattedPeriod + "! " +
+                  "Download it, fill it out, and upload it to generate DOCX and PDF formats.";
+            redirectAttributes.addFlashAttribute("successMessage", message);
 
         } catch (StorageException e) {
             log.error("Storage error during file generation", e);
