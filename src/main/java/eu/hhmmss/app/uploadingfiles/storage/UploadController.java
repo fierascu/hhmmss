@@ -325,8 +325,7 @@ public class UploadController {
     }
 
     @PostMapping("/generate")
-    public String handleGenerate(@RequestParam("file") MultipartFile file,
-                                 @RequestParam("period") String period,
+    public String handleGenerate(@RequestParam("period") String period,
                                  @RequestParam(required = false) String theme,
                                  RedirectAttributes redirectAttributes) {
         // Acquire permit for throttling
@@ -339,22 +338,23 @@ public class UploadController {
                 return buildRedirectUrl(theme);
             }
 
-            // Validate file size
-            validateFileSize(file);
-
             String formattedPeriod = formatPeriod(period);
-            log.info("Generating timesheet with new period: {}", formattedPeriod);
+            log.info("Generating new timesheet from template with period: {}", formattedPeriod);
 
-            // Store the uploaded file
-            String uuidFilename = uploadService.store(file);
-            log.info("Stored uploaded file as: {}", uuidFilename);
+            // Load the static Excel template
+            Resource excelTemplateResource = new ClassPathResource("timesheet-template.xlsx");
 
-            Path uploadedFilePath = uploadService.load(uuidFilename);
-            String originalFilename = file.getOriginalFilename();
+            // Generate a UUID filename for the new Excel file
+            String uuidFilename = UUID.randomUUID().toString() + ".xlsx";
+            Path generatedExcelPath = uploadService.load(uuidFilename);
+
+            // Copy template to the new file
+            Files.copy(excelTemplateResource.getInputStream(), generatedExcelPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            log.info("Created new Excel file from template: {}", uuidFilename);
 
             // Update period in the Excel file (also adjusts days and highlights weekends/holidays)
             try {
-                XlsService.updatePeriod(uploadedFilePath, formattedPeriod);
+                XlsService.updatePeriod(generatedExcelPath, formattedPeriod);
             } catch (IOException e) {
                 log.error("Failed to update period in Excel file", e);
                 redirectAttributes.addFlashAttribute("errorMessage", "Failed to update period: " + e.getMessage());
@@ -362,8 +362,9 @@ public class UploadController {
             }
 
             // Read the timesheet data with updated period
-            HhmmssDto extractedData = XlsService.readTimesheet(uploadedFilePath);
-            log.info("Extracted data with new period: {} tasks, {} meta fields",
+            HhmmssDto extractedData = XlsService.readTimesheet(generatedExcelPath);
+            log.info("Generated timesheet with period {}: {} tasks, {} meta fields",
+                    formattedPeriod,
                     extractedData.getTasks().size(),
                     extractedData.getMeta().size());
 
@@ -371,32 +372,32 @@ public class UploadController {
             String extractedFilename = uuidFilename + ".docx";
             Path extractedFilePath = uploadService.load(extractedFilename);
 
-            Resource templateResource = new ClassPathResource("timesheet-template.docx");
+            Resource docxTemplateResource = new ClassPathResource("timesheet-template.docx");
             Path tempTemplate = Files.createTempFile("template-", ".docx");
-            Files.copy(templateResource.getInputStream(), tempTemplate, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(docxTemplateResource.getInputStream(), tempTemplate, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
             DocService.addDataToDocs(tempTemplate, extractedData, extractedFilePath);
             log.info("Generated timesheet DOCX file as: {}", extractedFilename);
 
             Files.deleteIfExists(tempTemplate);
 
-            // Generate PDF from input XLS
+            // Generate PDF from generated XLS
             String xlsPdfFilename = uuidFilename + ".pdf";
             Path xlsPdfPath = uploadService.load(xlsPdfFilename);
-            pdfService.convertXlsToPdf(uploadedFilePath, xlsPdfPath);
-            log.info("Generated PDF from input XLS as: {}", xlsPdfFilename);
+            pdfService.convertXlsToPdf(generatedExcelPath, xlsPdfPath);
+            log.info("Generated PDF from Excel as: {}", xlsPdfFilename);
 
             // Generate PDF from output DOC
             String docPdfFilename = extractedFilename + ".pdf";
             Path docPdfPath = uploadService.load(docPdfFilename);
             pdfService.convertDocToPdf(extractedFilePath, docPdfPath);
-            log.info("Generated PDF from output DOC as: {}", docPdfFilename);
+            log.info("Generated PDF from DOCX as: {}", docPdfFilename);
 
             // Build list of generated files for display
             java.util.List<String> generatedFiles = new java.util.ArrayList<>();
-            generatedFiles.add(uuidFilename + " (Uploaded Excel with Period " + formattedPeriod + ")");
+            generatedFiles.add(uuidFilename + " (Generated Excel for " + formattedPeriod + ")");
             generatedFiles.add(extractedFilename + " (Generated Timesheet DOCX)");
-            generatedFiles.add(xlsPdfFilename + " (Input Excel as PDF)");
+            generatedFiles.add(xlsPdfFilename + " (Excel as PDF)");
             generatedFiles.add(docPdfFilename + " (Timesheet as PDF)");
 
             // Build file URLs for download links
@@ -411,14 +412,12 @@ public class UploadController {
                     UploadController.class, "serveFile", docPdfFilename).build().toUri().toString());
 
             // Pass data to the view
-            redirectAttributes.addFlashAttribute("originalFilename", originalFilename);
-            redirectAttributes.addFlashAttribute("uuidFilename", uuidFilename);
             redirectAttributes.addFlashAttribute("generatedFiles", generatedFiles);
             redirectAttributes.addFlashAttribute("generatedFileUrls", generatedFileUrls);
             redirectAttributes.addFlashAttribute("isZipResult", false);
             redirectAttributes.addFlashAttribute("successMessage",
-                    "Timesheet generated successfully with period " + formattedPeriod + "! " +
-                    "Extracted " + extractedData.getTasks().size() + " tasks and generated PDFs.");
+                    "New timesheet generated successfully for period " + formattedPeriod + "! " +
+                    "Created Excel, DOCX, and PDF files.");
 
         } catch (StorageException e) {
             log.error("Storage error during file generation", e);
