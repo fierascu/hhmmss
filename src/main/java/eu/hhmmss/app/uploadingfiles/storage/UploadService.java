@@ -28,6 +28,11 @@ import java.util.stream.Stream;
 public class UploadService {
 
     private Path rootLocation;
+    private final FileCleanupService fileCleanupService;
+
+    public UploadService(FileCleanupService fileCleanupService) {
+        this.fileCleanupService = fileCleanupService;
+    }
 
     @PostConstruct
     public void initialize() {
@@ -40,55 +45,9 @@ public class UploadService {
             log.info("Temporary upload directory created/verified: {}", rootLocation.toAbsolutePath());
 
             // Clear all files in the uploads folder on startup for security purposes
-            clearUploadsFolder();
+            fileCleanupService.cleanupAllFiles();
         } catch (IOException e) {
             throw new StorageException("Could not initialize temporary storage", e);
-        }
-    }
-
-    /**
-     * Clears all files in the uploads folder for security purposes.
-     * This is called during application startup to ensure no leftover files
-     * from previous sessions remain.
-     */
-    private void clearUploadsFolder() {
-        try {
-            if (!Files.exists(rootLocation)) {
-                log.info("Uploads folder does not exist yet, skipping cleanup");
-                return;
-            }
-
-            long deletedCount = 0;
-            long totalBytesFreed = 0;
-
-            try (Stream<Path> files = Files.walk(rootLocation, 1)) {
-                for (Path file : files.toList()) {
-                    // Skip the root directory itself
-                    if (file.equals(rootLocation)) {
-                        continue;
-                    }
-
-                    try {
-                        long fileSize = Files.size(file);
-                        Files.delete(file);
-                        deletedCount++;
-                        totalBytesFreed += fileSize;
-                        log.debug("Deleted file on startup: {}", file.getFileName());
-                    } catch (IOException e) {
-                        log.warn("Failed to delete file during startup cleanup: {}", file.getFileName(), e);
-                    }
-                }
-            }
-
-            if (deletedCount > 0) {
-                log.info("Startup cleanup completed: deleted {} file(s), freed {} bytes",
-                        deletedCount, totalBytesFreed);
-            } else {
-                log.info("Startup cleanup completed: no files to delete");
-            }
-        } catch (IOException e) {
-            log.error("Error during startup cleanup of uploads folder", e);
-            // Don't throw exception - we don't want to prevent app startup if cleanup fails
         }
     }
 
