@@ -27,7 +27,6 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 
 @Controller
 @RequiredArgsConstructor
@@ -153,6 +152,14 @@ public class UploadController {
         log.info("Extracted data from uploaded file: {} tasks, {} meta fields",
                 extractedData.getTasks().size(),
                 extractedData.getMeta().size());
+
+        // Apply weekend/holiday highlighting to the uploaded file
+        try {
+            XlsService.highlightWeekendsAndHolidaysInFile(uploadedFilePath);
+        } catch (IOException e) {
+            log.error("Failed to highlight weekends/holidays in Excel file", e);
+            // Continue processing even if highlighting fails
+        }
 
         // Step 3: Generate DOCX with extracted data
         // Maintain traceability: use input filename as base for output files
@@ -316,9 +323,122 @@ public class UploadController {
         }
     }
 
+    @PostMapping("/generate")
+    public String handleGenerate(@RequestParam(required = false) String period,
+                                 @RequestParam(required = false) String theme,
+                                 RedirectAttributes redirectAttributes) {
+        // Acquire permit for throttling
+        throttlingService.acquirePermit();
+
+        try {
+            // Default to current month and year if period not provided
+            if (period == null || period.trim().isEmpty()) {
+                java.time.LocalDate now = java.time.LocalDate.now();
+                period = String.format("%d-%02d", now.getYear(), now.getMonthValue());
+                log.info("No period provided, defaulting to current month: {}", period);
+            }
+
+            String formattedPeriod = formatPeriod(period);
+            log.info("Generating new timesheet from template with period: {}", formattedPeriod);
+
+            // Generate filename based on period (e.g., "2025-11.xlsx")
+            String filename = period + ".xlsx";
+            Path generatedExcelPath = uploadService.load(filename);
+
+            // Check if file already exists (caching mechanism)
+            boolean isFromCache = Files.exists(generatedExcelPath);
+            if (isFromCache) {
+                log.info("Using cached Excel file for period {}: {}", formattedPeriod, filename);
+            } else {
+                // File doesn't exist, generate it
+                log.info("Generating new Excel file for period {}: {}", formattedPeriod, filename);
+
+                // Load the static Excel template
+                Resource excelTemplateResource = new ClassPathResource("timesheet-template.xlsx");
+
+                // Copy template to the new file
+                Files.copy(excelTemplateResource.getInputStream(), generatedExcelPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                log.info("Created new Excel file from template: {}", filename);
+
+                // Update period in the Excel file (also adjusts days and highlights weekends/holidays)
+                try {
+                    XlsService.updatePeriod(generatedExcelPath, formattedPeriod);
+                } catch (IOException e) {
+                    log.error("Failed to update period in Excel file", e);
+                    redirectAttributes.addFlashAttribute("errorMessage", "Failed to update period: " + e.getMessage());
+                    return buildRedirectUrl(theme);
+                }
+            }
+
+            // Build list of generated files for display (only Excel)
+            java.util.List<String> generatedFiles = new java.util.ArrayList<>();
+            generatedFiles.add(filename + " (Generated Excel for " + formattedPeriod + ")");
+
+            // Build file URLs for download links
+            java.util.List<String> generatedFileUrls = new java.util.ArrayList<>();
+            generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
+                    UploadController.class, "serveFile", filename).build().toUri().toString());
+
+            // Pass data to the view
+            redirectAttributes.addFlashAttribute("generatedFiles", generatedFiles);
+            redirectAttributes.addFlashAttribute("generatedFileUrls", generatedFileUrls);
+            redirectAttributes.addFlashAttribute("isZipResult", false);
+
+            // Different message for cached vs newly generated files
+            String message = isFromCache
+                ? "Excel timesheet for period " + formattedPeriod + " retrieved from cache! " +
+                  "Download it, fill it out, and upload it to generate DOCX and PDF formats."
+                : "Excel timesheet generated successfully for period " + formattedPeriod + "! " +
+                  "Download it, fill it out, and upload it to generate DOCX and PDF formats.";
+            redirectAttributes.addFlashAttribute("successMessage", message);
+
+        } catch (StorageException e) {
+            log.error("Storage error during file generation", e);
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        } catch (IllegalStateException e) {
+            log.error("Invalid file format", e);
+            redirectAttributes.addFlashAttribute("errorMessage", "Invalid file format: " + e.getMessage());
+        } catch (IOException e) {
+            log.error("Error processing template", e);
+            redirectAttributes.addFlashAttribute("errorMessage", "Error processing template: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected error during generation", e);
+            redirectAttributes.addFlashAttribute("errorMessage", "An unexpected error occurred: " + e.getMessage());
+        } finally {
+            throttlingService.releasePermit();
+        }
+
+        return buildRedirectUrl(theme);
+    }
+
     @ExceptionHandler(StorageFileNotFoundException.class)
     public ResponseEntity<?> handleStorageFileNotFound(StorageFileNotFoundException exc) {
         return ResponseEntity.notFound().build();
+    }
+
+    /**
+     * Formats a period from YYYY-MM format to a more readable format.
+     * Example: "2024-01" -> "01/2024"
+     *
+     * @param period the period in YYYY-MM format
+     * @return formatted period as MM/YYYY
+     */
+    private String formatPeriod(String period) {
+        if (period == null || period.trim().isEmpty()) {
+            return "";
+        }
+
+        try {
+            String[] parts = period.split("-");
+            if (parts.length == 2) {
+                return parts[1] + "/" + parts[0]; // MM/YYYY
+            }
+        } catch (Exception e) {
+            log.warn("Failed to format period: {}", period, e);
+        }
+
+        // Return as-is if formatting fails
+        return period;
     }
 
 }

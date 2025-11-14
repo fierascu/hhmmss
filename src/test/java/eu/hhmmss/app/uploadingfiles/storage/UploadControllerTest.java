@@ -502,4 +502,102 @@ class UploadControllerTest {
         // releasePermit should not be called when acquirePermit throws
         verify(throttlingService, never()).releasePermit();
     }
+
+    @Test
+    void testHandleGenerateWithValidPeriod() throws Exception {
+        String period = "2024-11";
+        // Use existing path to avoid file I/O issues in unit test
+        Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
+
+        when(uploadService.load("2024-11.xlsx")).thenReturn(testExistingPath);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate")
+                        .param("period", period))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attributeExists("successMessage"))
+                .andExpect(flash().attributeExists("generatedFiles"))
+                .andExpect(flash().attributeExists("generatedFileUrls"))
+                .andExpect(flash().attribute("isZipResult", false));
+
+        verify(throttlingService, times(1)).acquirePermit();
+        verify(throttlingService, times(1)).releasePermit();
+    }
+
+    @Test
+    void testHandleGenerateWithoutPeriod() throws Exception {
+        // Should default to current month and year
+        java.time.LocalDate now = java.time.LocalDate.now();
+        String expectedFilename = String.format("%d-%02d.xlsx", now.getYear(), now.getMonthValue());
+        // Use existing path to avoid file I/O issues in unit test
+        Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
+
+        when(uploadService.load(expectedFilename)).thenReturn(testExistingPath);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attributeExists("successMessage"))
+                .andExpect(flash().attributeExists("generatedFiles"));
+
+        verify(throttlingService, times(1)).acquirePermit();
+        verify(throttlingService, times(1)).releasePermit();
+    }
+
+    @Test
+    void testHandleGenerateWithEmptyPeriod() throws Exception {
+        // Empty period should default to current month and year
+        java.time.LocalDate now = java.time.LocalDate.now();
+        String expectedFilename = String.format("%d-%02d.xlsx", now.getYear(), now.getMonthValue());
+        // Use existing path to avoid file I/O issues in unit test
+        Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
+
+        when(uploadService.load(expectedFilename)).thenReturn(testExistingPath);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate")
+                        .param("period", ""))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attributeExists("successMessage"));
+
+        verify(throttlingService, times(1)).acquirePermit();
+        verify(throttlingService, times(1)).releasePermit();
+    }
+
+    @Test
+    void testHandleGenerateWithTheme() throws Exception {
+        String period = "2024-11";
+        // Use existing path to avoid file I/O issues in unit test
+        Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
+
+        when(uploadService.load("2024-11.xlsx")).thenReturn(testExistingPath);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate")
+                        .param("period", period)
+                        .param("theme", "classic"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/?theme=classic"));
+
+        verify(throttlingService, times(1)).acquirePermit();
+        verify(throttlingService, times(1)).releasePermit();
+    }
+
+    @Test
+    void testHandleGenerateUsesCache() throws Exception {
+        String period = "2024-11";
+        Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
+
+        // Return a path that actually exists to simulate cache hit
+        when(uploadService.load("2024-11.xlsx")).thenReturn(testExistingPath);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate")
+                        .param("period", period))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"))
+                .andExpect(flash().attributeExists("successMessage"))
+                .andExpect(flash().attribute("successMessage", containsString("retrieved from cache")));
+
+        verify(throttlingService, times(1)).acquirePermit();
+        verify(throttlingService, times(1)).releasePermit();
+    }
 }

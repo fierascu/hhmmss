@@ -1,10 +1,8 @@
 package eu.hhmmss.app.converter;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -282,6 +280,323 @@ class XlsServiceTest {
         String contractRef = result.getMeta().get("Specific Contract Reference:");
         // Should return empty string for missing values
         assertEquals("", contractRef);
+    }
+
+    @Test
+    void testUpdatePeriodInExcelFile(@TempDir Path tempDir) throws IOException, InvalidFormatException {
+        Path testFile = tempDir.resolve("test-update-period.xlsx");
+
+        // Create test file with period field
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Timesheet");
+
+            // Create meta fields including period
+            createMetaRow(sheet, 0, "Specific Contract Reference:", "TEST");
+            createMetaRow(sheet, 1, "Period (month/year):", "12/2024");
+
+            // Create header row
+            Row headerRow = sheet.createRow(10);
+            headerRow.createCell(1).setCellValue("Day");
+            headerRow.createCell(2).setCellValue("Tasks");
+            headerRow.createCell(3).setCellValue("Hours");
+
+            // Create data rows for all 31 days
+            for (int day = 1; day <= 31; day++) {
+                createDataRow(sheet, 10 + day, day, "Work", 8.0);
+            }
+
+            try (FileOutputStream fos = new FileOutputStream(testFile.toFile())) {
+                wb.write(fos);
+            }
+        }
+
+        // Update period to February 2024 (29 days - leap year)
+        XlsService.updatePeriod(testFile, "02/2024");
+
+        // Read back and verify
+        try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
+            Sheet sheet = wb.getSheet("Timesheet");
+            assertNotNull(sheet);
+
+            // Verify period was updated
+            Row periodRow = sheet.getRow(1);
+            String updatedPeriod = periodRow.getCell(2).getStringCellValue();
+            assertEquals("02/2024", updatedPeriod);
+
+            // Verify days 30 and 31 are cleared
+            Row day30Row = sheet.getRow(40); // headerRow(10) + day(30)
+            Row day31Row = sheet.getRow(41); // headerRow(10) + day(31)
+
+            // Day cell should be blank
+            assertTrue(day30Row.getCell(1) == null || day30Row.getCell(1).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+            assertTrue(day31Row.getCell(1) == null || day31Row.getCell(1).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+
+            // Task cell should be blank
+            assertTrue(day30Row.getCell(2) == null || day30Row.getCell(2).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+            assertTrue(day31Row.getCell(2) == null || day31Row.getCell(2).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+
+            // Hours cell should be blank
+            assertTrue(day30Row.getCell(3) == null || day30Row.getCell(3).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+            assertTrue(day31Row.getCell(3) == null || day31Row.getCell(3).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+
+            // Verify day 29 still exists (leap year)
+            Row day29Row = sheet.getRow(39);
+            assertEquals(29.0, day29Row.getCell(1).getNumericCellValue());
+        }
+    }
+
+    @Test
+    void testUpdatePeriodFor30DayMonth(@TempDir Path tempDir) throws IOException, InvalidFormatException {
+        Path testFile = tempDir.resolve("test-update-period-30days.xlsx");
+
+        // Create test file
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Timesheet");
+
+            createMetaRow(sheet, 0, "Period (month/year):", "01/2024");
+
+            Row headerRow = sheet.createRow(5);
+            headerRow.createCell(1).setCellValue("Day");
+            headerRow.createCell(2).setCellValue("Tasks");
+            headerRow.createCell(3).setCellValue("Hours");
+
+            for (int day = 1; day <= 31; day++) {
+                createDataRow(sheet, 5 + day, day, "Work", 8.0);
+            }
+
+            try (FileOutputStream fos = new FileOutputStream(testFile.toFile())) {
+                wb.write(fos);
+            }
+        }
+
+        // Update to April (30 days)
+        XlsService.updatePeriod(testFile, "04/2024");
+
+        // Verify day 31 is cleared
+        try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
+            Sheet sheet = wb.getSheet("Timesheet");
+            Row day31Row = sheet.getRow(36); // headerRow(5) + day(31)
+
+            assertTrue(day31Row.getCell(1) == null || day31Row.getCell(1).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+
+            // Day 30 should still exist
+            Row day30Row = sheet.getRow(35);
+            assertEquals(30.0, day30Row.getCell(1).getNumericCellValue());
+        }
+    }
+
+    @Test
+    void testUpdatePeriodForFebruaryNonLeapYear(@TempDir Path tempDir) throws IOException, InvalidFormatException {
+        Path testFile = tempDir.resolve("test-update-period-feb.xlsx");
+
+        // Create test file
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Timesheet");
+
+            createMetaRow(sheet, 0, "Period (month/year):", "01/2024");
+
+            Row headerRow = sheet.createRow(5);
+            headerRow.createCell(1).setCellValue("Day");
+            headerRow.createCell(2).setCellValue("Tasks");
+            headerRow.createCell(3).setCellValue("Hours");
+
+            for (int day = 1; day <= 31; day++) {
+                createDataRow(sheet, 5 + day, day, "Work", 8.0);
+            }
+
+            try (FileOutputStream fos = new FileOutputStream(testFile.toFile())) {
+                wb.write(fos);
+            }
+        }
+
+        // Update to February 2025 (28 days - non-leap year)
+        XlsService.updatePeriod(testFile, "02/2025");
+
+        // Verify days 29-31 are cleared
+        try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
+            Sheet sheet = wb.getSheet("Timesheet");
+
+            for (int day = 29; day <= 31; day++) {
+                Row dayRow = sheet.getRow(5 + day);
+                assertTrue(dayRow.getCell(1) == null || dayRow.getCell(1).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK,
+                        "Day " + day + " should be cleared");
+            }
+
+            // Day 28 should still exist
+            Row day28Row = sheet.getRow(33);
+            assertEquals(28.0, day28Row.getCell(1).getNumericCellValue());
+        }
+    }
+
+    @Test
+    void testUpdatePeriodWithMissingPeriodField(@TempDir Path tempDir) throws IOException {
+        Path testFile = tempDir.resolve("test-no-period-field.xlsx");
+
+        // Create file without period field
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Timesheet");
+
+            createMetaRow(sheet, 0, "Specific Contract Reference:", "TEST");
+
+            Row headerRow = sheet.createRow(5);
+            headerRow.createCell(1).setCellValue("Day");
+
+            try (FileOutputStream fos = new FileOutputStream(testFile.toFile())) {
+                wb.write(fos);
+            }
+        }
+
+        // Should not throw, just log warning
+        assertDoesNotThrow(() -> XlsService.updatePeriod(testFile, "01/2024"));
+    }
+
+    @Test
+    void testHighlightWeekendsAndHolidaysInFile(@TempDir Path tempDir) throws IOException, InvalidFormatException {
+        Path testFile = tempDir.resolve("test-highlight.xlsx");
+
+        // Create test file for January 2024
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Timesheet");
+
+            createMetaRow(sheet, 0, "Period (month/year):", "01/2024");
+
+            Row headerRow = sheet.createRow(5);
+            headerRow.createCell(1).setCellValue("Day");
+            headerRow.createCell(2).setCellValue("Tasks");
+            headerRow.createCell(3).setCellValue("Hours");
+
+            // Create data rows for January 2024 (31 days)
+            for (int day = 1; day <= 31; day++) {
+                createDataRow(sheet, 5 + day, day, "Work", 8.0);
+            }
+
+            try (FileOutputStream fos = new FileOutputStream(testFile.toFile())) {
+                wb.write(fos);
+            }
+        }
+
+        // Apply highlighting
+        XlsService.highlightWeekendsAndHolidaysInFile(testFile);
+
+        // Verify highlighting was applied
+        try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
+            Sheet sheet = wb.getSheet("Timesheet");
+            assertNotNull(sheet);
+
+            // January 1, 2024 is Monday (New Year's Day - should be highlighted as holiday)
+            Row day1Row = sheet.getRow(6); // headerRow(5) + day(1)
+            Cell day1Cell = day1Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day1Cell.getCellStyle().getFillForegroundColor());
+
+            // January 6, 2024 is Saturday (should be highlighted as weekend)
+            Row day6Row = sheet.getRow(11); // headerRow(5) + day(6)
+            Cell day6Cell = day6Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day6Cell.getCellStyle().getFillForegroundColor());
+
+            // January 7, 2024 is Sunday (should be highlighted as weekend)
+            Row day7Row = sheet.getRow(12); // headerRow(5) + day(7)
+            Cell day7Cell = day7Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day7Cell.getCellStyle().getFillForegroundColor());
+
+            // January 8, 2024 is Monday (regular weekday - should not be highlighted)
+            Row day8Row = sheet.getRow(13); // headerRow(5) + day(8)
+            Cell day8Cell = day8Row.getCell(1);
+            assertNotEquals(IndexedColors.YELLOW.getIndex(), day8Cell.getCellStyle().getFillForegroundColor());
+        }
+    }
+
+    @Test
+    void testHighlightWeekendsInFebruary2024(@TempDir Path tempDir) throws IOException, InvalidFormatException {
+        Path testFile = tempDir.resolve("test-highlight-feb.xlsx");
+
+        // Create test file for February 2024
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Timesheet");
+
+            createMetaRow(sheet, 0, "Period (month/year):", "02/2024");
+
+            Row headerRow = sheet.createRow(5);
+            headerRow.createCell(1).setCellValue("Day");
+            headerRow.createCell(2).setCellValue("Tasks");
+
+            // Create data rows for February 2024 (29 days - leap year)
+            for (int day = 1; day <= 29; day++) {
+                createDataRow(sheet, 5 + day, day, "Work", 8.0);
+            }
+
+            try (FileOutputStream fos = new FileOutputStream(testFile.toFile())) {
+                wb.write(fos);
+            }
+        }
+
+        // Apply highlighting
+        XlsService.highlightWeekendsAndHolidaysInFile(testFile);
+
+        // Verify highlighting
+        try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
+            Sheet sheet = wb.getSheet("Timesheet");
+
+            // February 3, 2024 is Saturday
+            Row day3Row = sheet.getRow(8);
+            Cell day3Cell = day3Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day3Cell.getCellStyle().getFillForegroundColor());
+
+            // February 4, 2024 is Sunday
+            Row day4Row = sheet.getRow(9);
+            Cell day4Cell = day4Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day4Cell.getCellStyle().getFillForegroundColor());
+
+            // February 5, 2024 is Monday (weekday)
+            Row day5Row = sheet.getRow(10);
+            Cell day5Cell = day5Row.getCell(1);
+            assertNotEquals(IndexedColors.YELLOW.getIndex(), day5Cell.getCellStyle().getFillForegroundColor());
+        }
+    }
+
+    @Test
+    void testUpdatePeriodAlsoHighlights(@TempDir Path tempDir) throws IOException, InvalidFormatException {
+        Path testFile = tempDir.resolve("test-update-and-highlight.xlsx");
+
+        // Create test file
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Timesheet");
+
+            createMetaRow(sheet, 0, "Period (month/year):", "12/2023");
+
+            Row headerRow = sheet.createRow(5);
+            headerRow.createCell(1).setCellValue("Day");
+            headerRow.createCell(2).setCellValue("Tasks");
+
+            for (int day = 1; day <= 31; day++) {
+                createDataRow(sheet, 5 + day, day, "Work", 8.0);
+            }
+
+            try (FileOutputStream fos = new FileOutputStream(testFile.toFile())) {
+                wb.write(fos);
+            }
+        }
+
+        // Update period to January 2024 (which should also apply highlighting)
+        XlsService.updatePeriod(testFile, "01/2024");
+
+        // Verify both period update and highlighting
+        try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
+            Sheet sheet = wb.getSheet("Timesheet");
+
+            // Verify period was updated
+            Row periodRow = sheet.getRow(0);
+            assertEquals("01/2024", periodRow.getCell(2).getStringCellValue());
+
+            // Verify January 1, 2024 (holiday) is highlighted
+            Row day1Row = sheet.getRow(6);
+            Cell day1Cell = day1Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day1Cell.getCellStyle().getFillForegroundColor());
+
+            // Verify a weekend is highlighted
+            Row day6Row = sheet.getRow(11); // January 6 is Saturday
+            Cell day6Cell = day6Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day6Cell.getCellStyle().getFillForegroundColor());
+        }
     }
 
     // Helper methods to create test data

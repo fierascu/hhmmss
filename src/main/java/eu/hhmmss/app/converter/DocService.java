@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Map;
 
@@ -48,6 +50,27 @@ public class DocService {
         run.setText(text == null ? "" : text);
     }
 
+    /**
+     * Parses a period string in MM/YYYY format and returns the number of days in that month.
+     *
+     * @param period the period in MM/YYYY format (e.g., "01/2024")
+     * @return number of days in the month, or 31 if parsing fails (default to max)
+     */
+    private static int getDaysInMonth(String period) {
+        if (period == null || period.trim().isEmpty()) {
+            return 31; // Default to 31 days
+        }
+        try {
+            // Parse MM/YYYY format
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/yyyy");
+            YearMonth yearMonth = YearMonth.parse(period.trim(), formatter);
+            return yearMonth.lengthOfMonth();
+        } catch (Exception e) {
+            log.warn("Could not parse period '{}' to determine days in month, defaulting to 31", period);
+            return 31; // Default to 31 days if parsing fails
+        }
+    }
+
     public static Path addDataToDocs(Path templateDocx, HhmmssDto hhmmssDto, Path outDocx) {
         try (FileInputStream fis = new FileInputStream(templateDocx.toFile());
              XWPFDocument doc = new XWPFDocument(fis)) {
@@ -72,19 +95,31 @@ public class DocService {
             sym.setDecimalSeparator(',');
             DecimalFormat df = new DecimalFormat("0.00", sym);
 
+            // Determine the number of days in the month from the period
+            String period = meta.get("Period (month/year):");
+            int daysInMonth = getDaysInMonth(period);
+            log.info("Generating DOCX for {} days in month (period: {})", daysInMonth, period);
+
             double total = 0.0;
             for (int day = 1; day <= 31; day++) {
                 XWPFTableRow row = t.getRow(day); // 1-based day aligns with row index (since header is 0)
                 if (row == null) row = t.createRow();
 
-                Pair<String, Double> dailyTask = hhmmssDto.getTasks().get(day);
-                if (dailyTask == null) continue;
-                setCellText(row.getCell(1), defaultString(dailyTask.getKey()));
+                if (day <= daysInMonth) {
+                    // Process days within the month
+                    Pair<String, Double> dailyTask = hhmmssDto.getTasks().get(day);
+                    if (dailyTask == null) continue;
+                    setCellText(row.getCell(1), defaultString(dailyTask.getKey()));
 
-                double h = dailyTask.getValue();
-                if (h > 0) {
-                    setCellText(row.getCell(2), df.format(h));
-                    total += h;
+                    double h = dailyTask.getValue();
+                    if (h > 0) {
+                        setCellText(row.getCell(2), df.format(h));
+                        total += h;
+                    }
+                } else {
+                    // Clear cells for days beyond the month
+                    setCellText(row.getCell(1), "");
+                    setCellText(row.getCell(2), "");
                 }
             }
 
