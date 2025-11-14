@@ -18,15 +18,20 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class UploadServiceTest {
 
     private UploadService uploadService;
     private Path testRootLocation;
+    private FileCleanupService mockFileCleanupService;
 
     @BeforeEach
     void setUp() throws IOException {
-        uploadService = new UploadService();
+        // Create a mock FileCleanupService
+        mockFileCleanupService = mock(FileCleanupService.class);
+
+        uploadService = new UploadService(mockFileCleanupService);
         uploadService.initialize();
 
         // Get the actual root location used by the service
@@ -51,6 +56,9 @@ class UploadServiceTest {
     void testInitialize() {
         assertTrue(Files.exists(testRootLocation), "Upload directory should be created");
         assertTrue(Files.isDirectory(testRootLocation), "Upload location should be a directory");
+
+        // Verify that cleanupAllFiles was called during initialization
+        verify(mockFileCleanupService, times(1)).cleanupAllFiles();
     }
 
     @Test
@@ -285,7 +293,8 @@ class UploadServiceTest {
     @Test
     void testInit() throws IOException {
         // Test the init method (requires initialize to be called first to set rootLocation)
-        UploadService service = new UploadService();
+        FileCleanupService mockCleanupService = mock(FileCleanupService.class);
+        UploadService service = new UploadService(mockCleanupService);
         service.initialize(); // Must call initialize first to set rootLocation
 
         assertDoesNotThrow(() -> service.init());
