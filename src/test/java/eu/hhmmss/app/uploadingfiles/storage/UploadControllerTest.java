@@ -219,6 +219,7 @@ class UploadControllerTest {
         mockMvc.perform(get("/files/test.xlsx"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"test.xlsx\""))
+                .andExpect(header().string("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .andExpect(content().bytes(content));
 
         verify(uploadService).loadAsResource("test.xlsx");
@@ -260,9 +261,150 @@ class UploadControllerTest {
 
         mockMvc.perform(get("/files/" + filename))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Content-Disposition", "attachment; filename=\"" + filename + "\""));
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"" + filename + "\""))
+                .andExpect(header().string("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
 
         verify(uploadService).loadAsResource(filename);
+    }
+
+    @Test
+    void testServeFileContentTypeForDocx() throws Exception {
+        byte[] content = "docx content".getBytes();
+        Resource resource = new ByteArrayResource(content) {
+            @Override
+            public String getFilename() {
+                return "document.docx";
+            }
+        };
+
+        when(uploadService.loadAsResource("document.docx")).thenReturn(resource);
+
+        mockMvc.perform(get("/files/document.docx"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"document.docx\""));
+
+        verify(uploadService).loadAsResource("document.docx");
+    }
+
+    @Test
+    void testServeFileContentTypeForPdf() throws Exception {
+        byte[] content = "pdf content".getBytes();
+        Resource resource = new ByteArrayResource(content) {
+            @Override
+            public String getFilename() {
+                return "document.pdf";
+            }
+        };
+
+        when(uploadService.loadAsResource("document.pdf")).thenReturn(resource);
+
+        mockMvc.perform(get("/files/document.pdf"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"document.pdf\""));
+
+        verify(uploadService).loadAsResource("document.pdf");
+    }
+
+    @Test
+    void testServeFileContentTypeForZip() throws Exception {
+        byte[] content = "zip content".getBytes();
+        Resource resource = new ByteArrayResource(content) {
+            @Override
+            public String getFilename() {
+                return "archive.zip";
+            }
+        };
+
+        when(uploadService.loadAsResource("archive.zip")).thenReturn(resource);
+
+        mockMvc.perform(get("/files/archive.zip"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/zip"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"archive.zip\""));
+
+        verify(uploadService).loadAsResource("archive.zip");
+    }
+
+    @Test
+    void testServeFileContentTypeForXlsm() throws Exception {
+        byte[] content = "xlsm content".getBytes();
+        Resource resource = new ByteArrayResource(content) {
+            @Override
+            public String getFilename() {
+                return "workbook.xlsm";
+            }
+        };
+
+        when(uploadService.loadAsResource("workbook.xlsm")).thenReturn(resource);
+
+        mockMvc.perform(get("/files/workbook.xlsm"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/vnd.ms-excel.sheet.macroEnabled.12"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"workbook.xlsm\""));
+
+        verify(uploadService).loadAsResource("workbook.xlsm");
+    }
+
+    @Test
+    void testServeFileContentTypeForXlsb() throws Exception {
+        byte[] content = "xlsb content".getBytes();
+        Resource resource = new ByteArrayResource(content) {
+            @Override
+            public String getFilename() {
+                return "workbook.xlsb";
+            }
+        };
+
+        when(uploadService.loadAsResource("workbook.xlsb")).thenReturn(resource);
+
+        mockMvc.perform(get("/files/workbook.xlsb"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/vnd.ms-excel.sheet.binary.macroEnabled.12"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"workbook.xlsb\""));
+
+        verify(uploadService).loadAsResource("workbook.xlsb");
+    }
+
+    @Test
+    void testServeFileContentTypeForXls() throws Exception {
+        byte[] content = "xls content".getBytes();
+        Resource resource = new ByteArrayResource(content) {
+            @Override
+            public String getFilename() {
+                return "workbook.xls";
+            }
+        };
+
+        when(uploadService.loadAsResource("workbook.xls")).thenReturn(resource);
+
+        mockMvc.perform(get("/files/workbook.xls"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/vnd.ms-excel"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"workbook.xls\""));
+
+        verify(uploadService).loadAsResource("workbook.xls");
+    }
+
+    @Test
+    void testServeFileContentTypeForUnknownExtension() throws Exception {
+        byte[] content = "unknown content".getBytes();
+        Resource resource = new ByteArrayResource(content) {
+            @Override
+            public String getFilename() {
+                return "file.unknown";
+            }
+        };
+
+        when(uploadService.loadAsResource("file.unknown")).thenReturn(resource);
+
+        mockMvc.perform(get("/files/file.unknown"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/octet-stream"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"file.unknown\""));
+
+        verify(uploadService).loadAsResource("file.unknown");
     }
 
     @Test

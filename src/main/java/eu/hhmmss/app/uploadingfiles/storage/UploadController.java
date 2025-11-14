@@ -83,8 +83,57 @@ public class UploadController {
 
         if (file == null) return ResponseEntity.notFound().build();
 
-        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
-                "attachment; filename=\"" + file.getFilename() + "\"").body(file);
+        // Determine content type based on file extension
+        String contentType = getContentType(filename);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getFilename() + "\"")
+                .header(HttpHeaders.CONTENT_TYPE, contentType)
+                .body(file);
+    }
+
+    /**
+     * Determines the MIME content type based on the file extension.
+     * This ensures mobile browsers save files with the correct extension.
+     *
+     * @param filename the filename to check
+     * @return the MIME content type
+     */
+    private String getContentType(String filename) {
+        if (filename == null) {
+            return "application/octet-stream";
+        }
+
+        String lowerFilename = filename.toLowerCase();
+
+        // Excel formats
+        if (lowerFilename.endsWith(".xlsx")) {
+            return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        } else if (lowerFilename.endsWith(".xlsm")) {
+            return "application/vnd.ms-excel.sheet.macroEnabled.12";
+        } else if (lowerFilename.endsWith(".xlsb")) {
+            return "application/vnd.ms-excel.sheet.binary.macroEnabled.12";
+        } else if (lowerFilename.endsWith(".xls")) {
+            return "application/vnd.ms-excel";
+        }
+        // Word formats
+        else if (lowerFilename.endsWith(".docx")) {
+            return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        } else if (lowerFilename.endsWith(".doc")) {
+            return "application/msword";
+        }
+        // PDF
+        else if (lowerFilename.endsWith(".pdf")) {
+            return "application/pdf";
+        }
+        // ZIP
+        else if (lowerFilename.endsWith(".zip")) {
+            return "application/zip";
+        }
+        // Default fallback
+        else {
+            return "application/octet-stream";
+        }
     }
 
     @PostMapping("/")
