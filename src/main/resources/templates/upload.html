@@ -7,7 +7,7 @@
     <form th:action="${theme == 'classic' ? '/?theme=classic' : (theme == 'terminal' ? '/?theme=terminal' : '/')}"
           enctype="multipart/form-data" method="POST">
         <div class="form-group">
-            <label for="fileInput">Upload and Convert (as-is)</label>
+            <label for="fileInput">Upload and convert timesheet</label>
             <div style="display: flex; gap: 1rem; align-items: flex-start; margin-top: 0.5rem;">
                 <div style="flex: 1;">
                     <input id="fileInput" name="file" type="file"
@@ -26,7 +26,7 @@
         <form th:action="${theme == 'classic' ? '/generate?theme=classic' : (theme == 'terminal' ? '/generate?theme=terminal' : '/generate')}"
               method="POST">
             <div class="form-group">
-                <label for="monthInput">Generate New Timesheet</label>
+                <label for="monthInput">Generate timesheet for selected period</label>
                 <div style="display: flex; gap: 1rem; align-items: flex-start; margin-top: 0.5rem;">
                     <div style="flex: 1;">
                         <input id="monthInput" name="period" type="month" required
@@ -37,7 +37,7 @@
                         </small>
                     </div>
                     <button id="generateButton" type="submit" class="btn btn-primary" style="white-space: nowrap;">
-                        Generate Timesheet
+                        Generate
                     </button>
                 </div>
             </div>
