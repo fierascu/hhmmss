@@ -102,4 +102,51 @@ public class FileCleanupService {
         cleanupOldFiles();
         return 0; // Return value can be enhanced to track deletion count if needed
     }
+
+    /**
+     * Clears all files in the uploads folder regardless of age.
+     * This is intended for security purposes on application startup.
+     */
+    public void cleanupAllFiles() {
+        log.info("Starting cleanup of all files in uploads folder");
+
+        if (!Files.exists(uploadLocation)) {
+            log.info("Upload directory does not exist, skipping cleanup: {}", uploadLocation);
+            return;
+        }
+
+        int deletedCount = 0;
+        int errorCount = 0;
+        long totalBytesFreed = 0;
+
+        try (Stream<Path> files = Files.list(uploadLocation)) {
+            for (Path file : files.toList()) {
+                try {
+                    if (Files.isDirectory(file)) {
+                        log.debug("Skipping directory: {}", file.getFileName());
+                        continue;
+                    }
+
+                    long fileSize = Files.size(file);
+                    Files.delete(file);
+                    deletedCount++;
+                    totalBytesFreed += fileSize;
+                    log.debug("Deleted file: {} (size: {} bytes)", file.getFileName(), fileSize);
+                } catch (IOException e) {
+                    errorCount++;
+                    log.warn("Failed to delete file during startup cleanup: {}", file.getFileName(), e);
+                }
+            }
+        } catch (IOException e) {
+            log.error("Failed to list files in upload directory: {}", uploadLocation, e);
+            return;
+        }
+
+        if (deletedCount > 0) {
+            log.info("Startup cleanup completed: deleted {} file(s), freed {} bytes. Errors: {}",
+                    deletedCount, totalBytesFreed, errorCount);
+        } else {
+            log.info("Startup cleanup completed: no files to delete");
+        }
+    }
 }

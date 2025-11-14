@@ -158,18 +158,19 @@ class FileCleanupServiceTest {
 
     @Test
     void testCleanupWithNonExistentDirectory() throws IOException {
-        // Delete the upload directory
-        if (Files.exists(testUploadLocation)) {
-            try (Stream<Path> files = Files.list(testUploadLocation)) {
-                for (Path file : files.toList()) {
-                    Files.deleteIfExists(file);
-                }
-            }
-            Files.deleteIfExists(testUploadLocation);
-        }
+        // Create a separate service instance with a non-existent directory
+        FileCleanupService testService = new FileCleanupService();
+        ReflectionTestUtils.setField(testService, "retentionDays", 7);
 
-        // Run cleanup - should handle gracefully
-        assertDoesNotThrow(() -> cleanupService.cleanupOldFiles());
+        // Set a non-existent upload location
+        Path nonExistentPath = Paths.get(System.getProperty("java.io.tmpdir"), "uploads-nonexistent-test-" + System.currentTimeMillis());
+        ReflectionTestUtils.setField(testService, "uploadLocation", nonExistentPath);
+
+        // Run cleanup - should handle gracefully without throwing exception
+        assertDoesNotThrow(() -> testService.cleanupOldFiles());
+
+        // Verify the directory was not created
+        assertFalse(Files.exists(nonExistentPath), "Non-existent directory should remain non-existent");
     }
 
     @Test
@@ -239,5 +240,78 @@ class FileCleanupServiceTest {
 
         // Verify the new file is retained
         assertTrue(Files.exists(newFile), "Brand new file should be retained");
+    }
+
+    @Test
+    void testCleanupAllFilesDeletesAllFiles() throws IOException {
+        // Create multiple files with different ages
+        Path oldFile = testUploadLocation.resolve("old-file.xlsx");
+        Path newFile = testUploadLocation.resolve("new-file.xlsx");
+
+        Files.createFile(oldFile);
+        Files.createFile(newFile);
+
+        // Set different timestamps
+        Instant oldTime = Instant.now().minus(10, ChronoUnit.DAYS);
+        Files.setLastModifiedTime(oldFile, FileTime.from(oldTime));
+
+        // Verify files exist before cleanup
+        assertTrue(Files.exists(oldFile), "Old file should exist before cleanup");
+        assertTrue(Files.exists(newFile), "New file should exist before cleanup");
+
+        // Run cleanupAllFiles - should delete ALL files regardless of age
+        cleanupService.cleanupAllFiles();
+
+        // Verify all files were deleted
+        assertFalse(Files.exists(oldFile), "Old file should be deleted");
+        assertFalse(Files.exists(newFile), "New file should be deleted (regardless of age)");
+    }
+
+    @Test
+    void testCleanupAllFilesWithEmptyDirectory() throws IOException {
+        // Ensure directory is empty
+        try (Stream<Path> files = Files.list(testUploadLocation)) {
+            assertEquals(0, files.count(), "Directory should be empty");
+        }
+
+        // Run cleanupAllFiles - should complete without errors
+        assertDoesNotThrow(() -> cleanupService.cleanupAllFiles());
+    }
+
+    @Test
+    void testCleanupAllFilesIgnoresSubdirectories() throws IOException {
+        // Create a file and a subdirectory
+        Path file = testUploadLocation.resolve("test-file.xlsx");
+        Path subdir = testUploadLocation.resolve("subdir");
+
+        Files.createFile(file);
+        Files.createDirectory(subdir);
+
+        // Run cleanupAllFiles
+        cleanupService.cleanupAllFiles();
+
+        // File should be deleted, subdirectory should remain
+        assertFalse(Files.exists(file), "File should be deleted");
+        assertTrue(Files.exists(subdir), "Subdirectory should be ignored");
+
+        // Clean up subdirectory for tearDown
+        Files.deleteIfExists(subdir);
+    }
+
+    @Test
+    void testCleanupAllFilesWithNonExistentDirectory() {
+        // Create a separate service instance with a non-existent directory
+        FileCleanupService testService = new FileCleanupService();
+        ReflectionTestUtils.setField(testService, "retentionDays", 7);
+
+        // Set a non-existent upload location
+        Path nonExistentPath = Paths.get(System.getProperty("java.io.tmpdir"), "uploads-cleanupall-test-" + System.currentTimeMillis());
+        ReflectionTestUtils.setField(testService, "uploadLocation", nonExistentPath);
+
+        // Run cleanupAllFiles - should handle gracefully without throwing exception
+        assertDoesNotThrow(() -> testService.cleanupAllFiles());
+
+        // Verify the directory was not created
+        assertFalse(Files.exists(nonExistentPath), "Non-existent directory should remain non-existent");
     }
 }

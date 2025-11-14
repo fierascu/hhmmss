@@ -28,6 +28,11 @@ import java.util.stream.Stream;
 public class UploadService {
 
     private Path rootLocation;
+    private final FileCleanupService fileCleanupService;
+
+    public UploadService(FileCleanupService fileCleanupService) {
+        this.fileCleanupService = fileCleanupService;
+    }
 
     @PostConstruct
     public void initialize() {
@@ -38,6 +43,9 @@ public class UploadService {
         try {
             Files.createDirectories(rootLocation);
             log.info("Temporary upload directory created/verified: {}", rootLocation.toAbsolutePath());
+
+            // Clear all files in the uploads folder on startup for security purposes
+            fileCleanupService.cleanupAllFiles();
         } catch (IOException e) {
             throw new StorageException("Could not initialize temporary storage", e);
         }
