@@ -1,10 +1,8 @@
 package eu.hhmmss.app.converter;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -285,7 +283,7 @@ class XlsServiceTest {
     }
 
     @Test
-    void testUpdatePeriodInExcelFile(@TempDir Path tempDir) throws IOException {
+    void testUpdatePeriodInExcelFile(@TempDir Path tempDir) throws IOException, InvalidFormatException {
         Path testFile = tempDir.resolve("test-update-period.xlsx");
 
         // Create test file with period field
@@ -348,7 +346,7 @@ class XlsServiceTest {
     }
 
     @Test
-    void testUpdatePeriodFor30DayMonth(@TempDir Path tempDir) throws IOException {
+    void testUpdatePeriodFor30DayMonth(@TempDir Path tempDir) throws IOException, InvalidFormatException {
         Path testFile = tempDir.resolve("test-update-period-30days.xlsx");
 
         // Create test file
@@ -388,7 +386,7 @@ class XlsServiceTest {
     }
 
     @Test
-    void testUpdatePeriodForFebruaryNonLeapYear(@TempDir Path tempDir) throws IOException {
+    void testUpdatePeriodForFebruaryNonLeapYear(@TempDir Path tempDir) throws IOException, InvalidFormatException {
         Path testFile = tempDir.resolve("test-update-period-feb.xlsx");
 
         // Create test file
@@ -453,7 +451,7 @@ class XlsServiceTest {
     }
 
     @Test
-    void testHighlightWeekendsAndHolidaysInFile(@TempDir Path tempDir) throws IOException {
+    void testHighlightWeekendsAndHolidaysInFile(@TempDir Path tempDir) throws IOException, InvalidFormatException {
         Path testFile = tempDir.resolve("test-highlight.xlsx");
 
         // Create test file for January 2024
@@ -508,7 +506,7 @@ class XlsServiceTest {
     }
 
     @Test
-    void testHighlightWeekendsInFebruary2024(@TempDir Path tempDir) throws IOException {
+    void testHighlightWeekendsInFebruary2024(@TempDir Path tempDir) throws IOException, InvalidFormatException {
         Path testFile = tempDir.resolve("test-highlight-feb.xlsx");
 
         // Create test file for February 2024
@@ -556,7 +554,7 @@ class XlsServiceTest {
     }
 
     @Test
-    void testUpdatePeriodAlsoHighlights(@TempDir Path tempDir) throws IOException {
+    void testUpdatePeriodAlsoHighlights(@TempDir Path tempDir) throws IOException, InvalidFormatException {
         Path testFile = tempDir.resolve("test-update-and-highlight.xlsx");
 
         // Create test file
