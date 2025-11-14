@@ -8,12 +8,17 @@
           enctype="multipart/form-data" method="POST">
         <div class="form-group">
             <label for="fileInput">Upload and Convert (as-is)</label>
-            <input id="fileInput" name="file" type="file"
-                   accept=".xls,.xlsx,.xlsm,.xlsb,.zip"/>
+            <div style="display: flex; gap: 1rem; align-items: flex-start; margin-top: 0.5rem;">
+                <div style="flex: 1;">
+                    <input id="fileInput" name="file" type="file"
+                           accept=".xls,.xlsx,.xlsm,.xlsb,.zip"
+                           style="width: 100%;"/>
+                </div>
+                <button id="uploadButton" type="submit" class="btn btn-primary" disabled style="white-space: nowrap;">
+                    Convert
+                </button>
+            </div>
         </div>
-        <button id="uploadButton" type="submit" class="btn btn-primary" disabled style="margin-top: 1rem;">
-            Upload and Convert
-        </button>
     </form>
 
     <!-- Generate New Timesheet Form -->
