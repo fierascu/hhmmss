@@ -227,12 +227,30 @@ public class XlsService {
             for (Row r : sheet) {
                 Cell labelCell = r.getCell(1); // column B
                 if (labelCell != null && "Period (month/year):".equals(getCellString(labelCell))) {
-                    // Put the value exactly one cell to the right of the label
-                    int valueCellIndex = labelCell.getColumnIndex() + 1;
-                    Cell valueCell = r.getCell(valueCellIndex);
-                    if (valueCell == null) {
-                        valueCell = r.createCell(valueCellIndex);
+                    // Find the first non-empty cell to the right (where the value currently is)
+                    Cell valueCell = null;
+                    int valueCellIndex = -1;
+                    for (int i = 2; i <= Math.max(r.getLastCellNum(), 10); i++) {
+                        Cell cell = r.getCell(i);
+                        if (cell != null) {
+                            String cellValue = getCellString(cell).trim();
+                            if (!cellValue.isEmpty()) {
+                                valueCell = cell;
+                                valueCellIndex = i;
+                                break;
+                            }
+                        }
                     }
+
+                    // If no existing value found, create one in the cell immediately to the right
+                    if (valueCell == null) {
+                        valueCellIndex = labelCell.getColumnIndex() + 1;
+                        valueCell = r.getCell(valueCellIndex);
+                        if (valueCell == null) {
+                            valueCell = r.createCell(valueCellIndex);
+                        }
+                    }
+
                     String currentValue = getCellString(valueCell).trim();
                     valueCell.setCellValue(newPeriod);
                     updated = true;
