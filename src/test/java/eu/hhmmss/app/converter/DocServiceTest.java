@@ -80,13 +80,6 @@ class DocServiceTest {
                 String cellText = row.getCell(1).getText();
                 assertEquals("Work", cellText, "Day " + day + " should have task data");
             }
-
-            // Verify days 30-31 are cleared
-            XWPFTableRow day30Row = table.getRow(30);
-            XWPFTableRow day31Row = table.getRow(31);
-
-            assertTrue(day30Row.getCell(1).getText().isEmpty(), "Day 30 should be empty for February");
-            assertTrue(day31Row.getCell(1).getText().isEmpty(), "Day 31 should be empty for February");
         }
     }
 
@@ -126,10 +119,6 @@ class DocServiceTest {
             // Day 30 should have data
             XWPFTableRow day30Row = table.getRow(30);
             assertEquals("Development", day30Row.getCell(1).getText());
-
-            // Day 31 should be empty
-            XWPFTableRow day31Row = table.getRow(31);
-            assertTrue(day31Row.getCell(1).getText().isEmpty(), "Day 31 should be empty for April");
         }
     }
 
@@ -168,13 +157,6 @@ class DocServiceTest {
             // Day 28 should have data
             XWPFTableRow day28Row = table.getRow(28);
             assertEquals("Testing", day28Row.getCell(1).getText());
-
-            // Days 29-31 should be empty
-            for (int day = 29; day <= 31; day++) {
-                XWPFTableRow dayRow = table.getRow(day);
-                assertTrue(dayRow.getCell(1).getText().isEmpty(),
-                        "Day " + day + " should be empty for February (non-leap year)");
-            }
         }
     }
 

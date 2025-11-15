@@ -107,48 +107,40 @@ public class DocService {
             double totalStandby = 0.0;
             double totalNonInvoiceable = 0.0;
 
-            for (int day = 1; day <= 31; day++) {
+            // Process each day in the month
+            for (int day = 1; day <= daysInMonth; day++) {
+                DayData dayData = hhmmssDto.getTasks().get(day);
+                if (dayData == null) continue;
+
                 XWPFTableRow row = t.getRow(day); // 1-based day aligns with row index (since header is 0)
                 if (row == null) row = t.createRow();
 
-                if (day <= daysInMonth) {
-                    // Process days within the month
-                    DayData dayData = hhmmssDto.getTasks().get(day);
-                    if (dayData == null) continue;
+                setCellText(row.getCell(1), defaultString(dayData.getTask()));
 
-                    setCellText(row.getCell(1), defaultString(dayData.getTask()));
-
-                    // Write all 6 hours columns
-                    if (dayData.getHoursFlexibilityPeriod() > 0) {
-                        setCellText(row.getCell(2), df.format(dayData.getHoursFlexibilityPeriod()));
-                        totalFlexibility += dayData.getHoursFlexibilityPeriod();
-                    }
-                    if (dayData.getHoursOutsideFlexibilityPeriod() > 0) {
-                        setCellText(row.getCell(3), df.format(dayData.getHoursOutsideFlexibilityPeriod()));
-                        totalOutsideFlexibility += dayData.getHoursOutsideFlexibilityPeriod();
-                    }
-                    if (dayData.getHoursSaturdays() > 0) {
-                        setCellText(row.getCell(4), df.format(dayData.getHoursSaturdays()));
-                        totalSaturdays += dayData.getHoursSaturdays();
-                    }
-                    if (dayData.getHoursSundaysHolidays() > 0) {
-                        setCellText(row.getCell(5), df.format(dayData.getHoursSundaysHolidays()));
-                        totalSundaysHolidays += dayData.getHoursSundaysHolidays();
-                    }
-                    if (dayData.getHoursStandby() > 0) {
-                        setCellText(row.getCell(6), df.format(dayData.getHoursStandby()));
-                        totalStandby += dayData.getHoursStandby();
-                    }
-                    if (dayData.getHoursNonInvoiceable() > 0) {
-                        setCellText(row.getCell(7), df.format(dayData.getHoursNonInvoiceable()));
-                        totalNonInvoiceable += dayData.getHoursNonInvoiceable();
-                    }
-                } else {
-                    // Clear cells for days beyond the month
-                    setCellText(row.getCell(1), "");
-                    for (int col = 2; col <= 7; col++) {
-                        setCellText(row.getCell(col), "");
-                    }
+                // Write all 6 hours columns
+                if (dayData.getHoursFlexibilityPeriod() > 0) {
+                    setCellText(row.getCell(2), df.format(dayData.getHoursFlexibilityPeriod()));
+                    totalFlexibility += dayData.getHoursFlexibilityPeriod();
+                }
+                if (dayData.getHoursOutsideFlexibilityPeriod() > 0) {
+                    setCellText(row.getCell(3), df.format(dayData.getHoursOutsideFlexibilityPeriod()));
+                    totalOutsideFlexibility += dayData.getHoursOutsideFlexibilityPeriod();
+                }
+                if (dayData.getHoursSaturdays() > 0) {
+                    setCellText(row.getCell(4), df.format(dayData.getHoursSaturdays()));
+                    totalSaturdays += dayData.getHoursSaturdays();
+                }
+                if (dayData.getHoursSundaysHolidays() > 0) {
+                    setCellText(row.getCell(5), df.format(dayData.getHoursSundaysHolidays()));
+                    totalSundaysHolidays += dayData.getHoursSundaysHolidays();
+                }
+                if (dayData.getHoursStandby() > 0) {
+                    setCellText(row.getCell(6), df.format(dayData.getHoursStandby()));
+                    totalStandby += dayData.getHoursStandby();
+                }
+                if (dayData.getHoursNonInvoiceable() > 0) {
+                    setCellText(row.getCell(7), df.format(dayData.getHoursNonInvoiceable()));
+                    totalNonInvoiceable += dayData.getHoursNonInvoiceable();
                 }
             }
 
