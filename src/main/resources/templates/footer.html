@@ -12,6 +12,15 @@
                         target="_blank"
                         rel="noopener noreferrer">source code</a> to audit our security practices.
         </p>
+        <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border-secondary); font-size: 0.7rem; opacity: 0.8;">
+            <span th:if="${buildInfo != null}">
+                Version: <span th:text="${buildInfo.version}">N/A</span> |
+                Built: <span th:text="${buildInfo.buildTime}">N/A</span> |
+                Commit: <span th:text="${buildInfo.commitId}">N/A</span> |
+                Branch: <span th:text="${buildInfo.branch}">N/A</span>
+            </span>
+            <span th:if="${buildInfo == null}">Development Mode</span>
+        </div>
         <div class="theme-switch" th:with="currentTheme=${theme != null ? theme : 'ascii'}"> Theme:
             <th:block th:if="${currentTheme == 'ascii'}">
                 <a th:href="@{/(theme='terminal')}">terminal</a> |
