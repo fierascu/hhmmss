@@ -1,5 +1,6 @@
 package eu.hhmmss.app.converter;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -8,6 +9,17 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 class HolidayServiceTest {
+
+    private HolidayService service;
+
+    @BeforeEach
+    void setUp() {
+        // Initialize service with the same holiday data from application.properties
+        String holidays2024 = "2024-01-01,2024-04-01,2024-05-01,2024-12-25,2024-12-26";
+        String holidays2025 = "2025-01-01,2025-04-18,2025-04-21,2025-05-01,2025-12-25,2025-12-26";
+        String holidays2026 = "2026-01-01,2026-04-03,2026-04-06,2026-05-01,2026-12-25,2026-12-26";
+        service = new HolidayService(holidays2024, holidays2025, holidays2026);
+    }
 
     @Test
     void testIsWeekendSaturday() {
@@ -32,23 +44,20 @@ class HolidayServiceTest {
 
     @Test
     void testIsHolidayNewYear2024() {
-        HolidayService service = new HolidayService();
-        // January 1, 2024 is New Year's Day (configured in holidays.json)
+        // January 1, 2024 is New Year's Day (configured in application.properties)
         LocalDate newYear = LocalDate.of(2024, 1, 1);
         assertTrue(service.isHoliday(newYear));
     }
 
     @Test
     void testIsHolidayChristmas2024() {
-        HolidayService service = new HolidayService();
-        // December 25, 2024 is Christmas (configured in holidays.json)
+        // December 25, 2024 is Christmas (configured in application.properties)
         LocalDate christmas = LocalDate.of(2024, 12, 25);
         assertTrue(service.isHoliday(christmas));
     }
 
     @Test
     void testIsHolidayNonHoliday() {
-        HolidayService service = new HolidayService();
         // January 15, 2024 is not a holiday
         LocalDate regularDay = LocalDate.of(2024, 1, 15);
         assertFalse(service.isHoliday(regularDay));
@@ -56,28 +65,24 @@ class HolidayServiceTest {
 
     @Test
     void testIsWeekendOrHolidaySaturday() {
-        HolidayService service = new HolidayService();
         LocalDate saturday = LocalDate.of(2024, 1, 6);
         assertTrue(service.isWeekendOrHoliday(saturday));
     }
 
     @Test
     void testIsWeekendOrHolidayHoliday() {
-        HolidayService service = new HolidayService();
         LocalDate newYear = LocalDate.of(2024, 1, 1);
         assertTrue(service.isWeekendOrHoliday(newYear));
     }
 
     @Test
     void testIsWeekendOrHolidayRegularWeekday() {
-        HolidayService service = new HolidayService();
         LocalDate monday = LocalDate.of(2024, 1, 8);
         assertFalse(service.isWeekendOrHoliday(monday));
     }
 
     @Test
     void testGetHolidaysForYear2024() {
-        HolidayService service = new HolidayService();
         Set<LocalDate> holidays2024 = service.getHolidaysForYear(2024);
 
         assertNotNull(holidays2024);
@@ -90,7 +95,6 @@ class HolidayServiceTest {
 
     @Test
     void testGetHolidaysForYear2025() {
-        HolidayService service = new HolidayService();
         Set<LocalDate> holidays2025 = service.getHolidaysForYear(2025);
 
         assertNotNull(holidays2025);
@@ -102,7 +106,6 @@ class HolidayServiceTest {
 
     @Test
     void testGetHolidaysForYearNotConfigured() {
-        HolidayService service = new HolidayService();
         Set<LocalDate> holidays2030 = service.getHolidaysForYear(2030);
 
         // Should return empty set for years without configured holidays
@@ -112,8 +115,6 @@ class HolidayServiceTest {
 
     @Test
     void testHolidayFromDifferentYears() {
-        HolidayService service = new HolidayService();
-
         // New Year 2024
         assertTrue(service.isHoliday(LocalDate.of(2024, 1, 1)));
 
