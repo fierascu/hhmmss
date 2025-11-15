@@ -20,14 +20,14 @@ import java.util.Map;
 @Service
 public class XlsService {
 
-    public static final int COL_DAY = 2;
-    public static final int COL_TASK = COL_DAY + 1;
-    public static final int COL_HOURS_FLEXIBILITY = COL_TASK + 1;
-    public static final int COL_HOURS_OUTSIDE_FLEXIBILITY = COL_HOURS_FLEXIBILITY + 1;
-    public static final int COL_HOURS_SATURDAYS = COL_HOURS_OUTSIDE_FLEXIBILITY + 1;
-    public static final int COL_HOURS_SUNDAYS_HOLIDAYS = COL_HOURS_SATURDAYS + 1;
-    public static final int COL_HOURS_STANDBY = COL_HOURS_SUNDAYS_HOLIDAYS + 1;
-    public static final int COL_HOURS_NON_INVOICEABLE = COL_HOURS_STANDBY + 1;
+    public static final int COL_DAY = 1;  // Column B
+    public static final int COL_TASK = 2;  // Column C
+    public static final int COL_HOURS_FLEXIBILITY = 3;  // Column D
+    public static final int COL_HOURS_OUTSIDE_FLEXIBILITY = 4;  // Column E
+    public static final int COL_HOURS_SATURDAYS = 5;  // Column F
+    public static final int COL_HOURS_SUNDAYS_HOLIDAYS = 6;  // Column G
+    public static final int COL_HOURS_STANDBY = 7;  // Column H
+    public static final int COL_HOURS_NON_INVOICEABLE = 8;  // Column I
 
     /**
      * Reads the content of the provided Excel timesheet file (expected sheet name: "Timesheet").
@@ -74,19 +74,19 @@ public class XlsService {
             for (int r = headerRow + 1; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
                 if (row == null) continue;
-                String dayStr = getCellString(row.getCell(1)).trim();
+                String dayStr = getCellString(row.getCell(COL_DAY)).trim();
 
                 if (!dayStr.endsWith(".0")) continue;
 
                 double v = Double.parseDouble(dayStr);
                 int day = (int) v;
-                String task = getCellString(row.getCell(2));
-                double hoursFlexibility = getCellNumeric(row.getCell(3));
-                double hoursOutsideFlexibility = getCellNumeric(row.getCell(4));
-                double hoursSaturdays = getCellNumeric(row.getCell(5));
-                double hoursSundaysHolidays = getCellNumeric(row.getCell(6));
-                double hoursStandby = getCellNumeric(row.getCell(7));
-                double hoursNonInvoiceable = getCellNumeric(row.getCell(8));
+                String task = getCellString(row.getCell(COL_TASK));
+                double hoursFlexibility = getCellNumeric(row.getCell(COL_HOURS_FLEXIBILITY));
+                double hoursOutsideFlexibility = getCellNumeric(row.getCell(COL_HOURS_OUTSIDE_FLEXIBILITY));
+                double hoursSaturdays = getCellNumeric(row.getCell(COL_HOURS_SATURDAYS));
+                double hoursSundaysHolidays = getCellNumeric(row.getCell(COL_HOURS_SUNDAYS_HOLIDAYS));
+                double hoursStandby = getCellNumeric(row.getCell(COL_HOURS_STANDBY));
+                double hoursNonInvoiceable = getCellNumeric(row.getCell(COL_HOURS_NON_INVOICEABLE));
 
                 DayData dayData = DayData.builder()
                         .task(task)
@@ -337,10 +337,10 @@ public class XlsService {
             }
 
             // Ensure day number cell exists
-            Cell dayCell = row.getCell(1);
+            Cell dayCell = row.getCell(COL_DAY);
             if (dayCell == null || getCellString(dayCell).trim().isEmpty()) {
                 if (dayCell == null) {
-                    dayCell = row.createCell(1);
+                    dayCell = row.createCell(COL_DAY);
                 }
                 dayCell.setCellValue((double) day);
                 log.info("Set day number {} in row {}", day, rowIndex);
@@ -353,7 +353,7 @@ public class XlsService {
             Row row = sheet.getRow(rowIndex);
             if (row != null) {
                 // Clear the day number cell (column B)
-                Cell dayCell = row.getCell(1);
+                Cell dayCell = row.getCell(COL_DAY);
                 if (dayCell != null) {
                     String dayStr = getCellString(dayCell).trim();
                     // Only clear if it matches the expected day number
@@ -362,14 +362,14 @@ public class XlsService {
                     }
                 }
 
-                // Clear task cell (column C - index 2)
-                Cell taskCell = row.getCell(2);
+                // Clear task cell (column C)
+                Cell taskCell = row.getCell(COL_TASK);
                 if (taskCell != null) {
                     taskCell.setBlank();
                 }
 
-                // Clear all hours columns (columns D-I, indices 3-8)
-                for (int colIdx = 3; colIdx <= 8; colIdx++) {
+                // Clear all hours columns (columns D-I)
+                for (int colIdx = COL_HOURS_FLEXIBILITY; colIdx <= COL_HOURS_NON_INVOICEABLE; colIdx++) {
                     Cell hoursCell = row.getCell(colIdx);
                     if (hoursCell != null) {
                         hoursCell.setBlank();
@@ -432,7 +432,7 @@ public class XlsService {
                     Row row = sheet.getRow(headerRow + day);
                     if (row != null) {
                         // Apply yellow background to day cell (column B)
-                        Cell dayCell = row.getCell(1);
+                        Cell dayCell = row.getCell(COL_DAY);
                         if (dayCell != null) {
                             // Preserve existing cell value and type, just change the style
                             CellStyle newStyle = wb.createCellStyle();

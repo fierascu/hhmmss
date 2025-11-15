@@ -327,15 +327,15 @@ class XlsServiceTest {
             Row day31Row = sheet.getRow(41); // headerRow(10) + day(31)
 
             // Day cell should be blank
-            assertTrue(day30Row.getCell(1) == null || day30Row.getCell(1).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
-            assertTrue(day31Row.getCell(1) == null || day31Row.getCell(1).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+            assertTrue(day30Row.getCell(XlsService.COL_DAY) == null || day30Row.getCell(XlsService.COL_DAY).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+            assertTrue(day31Row.getCell(XlsService.COL_DAY) == null || day31Row.getCell(XlsService.COL_DAY).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
 
             // Task cell should be blank
-            assertTrue(day30Row.getCell(2) == null || day30Row.getCell(2).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
-            assertTrue(day31Row.getCell(2) == null || day31Row.getCell(2).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+            assertTrue(day30Row.getCell(XlsService.COL_TASK) == null || day30Row.getCell(XlsService.COL_TASK).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+            assertTrue(day31Row.getCell(XlsService.COL_TASK) == null || day31Row.getCell(XlsService.COL_TASK).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
 
-            // All hours cells (columns 3-8) should be blank
-            for (int col = 3; col <= 8; col++) {
+            // All hours cells should be blank
+            for (int col = XlsService.COL_HOURS_FLEXIBILITY; col <= XlsService.COL_HOURS_NON_INVOICEABLE; col++) {
                 assertTrue(day30Row.getCell(col) == null || day30Row.getCell(col).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK,
                         "Day 30 column " + col + " should be blank");
                 assertTrue(day31Row.getCell(col) == null || day31Row.getCell(col).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK,
@@ -344,7 +344,7 @@ class XlsServiceTest {
 
             // Verify day 29 still exists (leap year)
             Row day29Row = sheet.getRow(39);
-            assertEquals(29.0, day29Row.getCell(1).getNumericCellValue());
+            assertEquals(29.0, day29Row.getCell(XlsService.COL_DAY).getNumericCellValue());
         }
     }
 
@@ -380,11 +380,11 @@ class XlsServiceTest {
             Sheet sheet = wb.getSheet("Timesheet");
             Row day31Row = sheet.getRow(36); // headerRow(5) + day(31)
 
-            assertTrue(day31Row.getCell(1) == null || day31Row.getCell(1).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
+            assertTrue(day31Row.getCell(XlsService.COL_DAY) == null || day31Row.getCell(XlsService.COL_DAY).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK);
 
             // Day 30 should still exist
             Row day30Row = sheet.getRow(35);
-            assertEquals(30.0, day30Row.getCell(1).getNumericCellValue());
+            assertEquals(30.0, day30Row.getCell(XlsService.COL_DAY).getNumericCellValue());
         }
     }
 
@@ -421,13 +421,13 @@ class XlsServiceTest {
 
             for (int day = 29; day <= 31; day++) {
                 Row dayRow = sheet.getRow(5 + day);
-                assertTrue(dayRow.getCell(1) == null || dayRow.getCell(1).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK,
+                assertTrue(dayRow.getCell(XlsService.COL_DAY) == null || dayRow.getCell(XlsService.COL_DAY).getCellType() == org.apache.poi.ss.usermodel.CellType.BLANK,
                         "Day " + day + " should be cleared");
             }
 
             // Day 28 should still exist
             Row day28Row = sheet.getRow(33);
-            assertEquals(28.0, day28Row.getCell(1).getNumericCellValue());
+            assertEquals(28.0, day28Row.getCell(XlsService.COL_DAY).getNumericCellValue());
         }
     }
 
@@ -488,22 +488,22 @@ class XlsServiceTest {
 
             // January 1, 2024 is Monday (New Year's Day - should be highlighted as holiday)
             Row day1Row = sheet.getRow(6); // headerRow(5) + day(1)
-            Cell day1Cell = day1Row.getCell(1);
+            Cell day1Cell = day1Row.getCell(XlsService.COL_DAY);
             assertEquals(IndexedColors.YELLOW.getIndex(), day1Cell.getCellStyle().getFillForegroundColor());
 
             // January 6, 2024 is Saturday (should be highlighted as weekend)
             Row day6Row = sheet.getRow(11); // headerRow(5) + day(6)
-            Cell day6Cell = day6Row.getCell(1);
+            Cell day6Cell = day6Row.getCell(XlsService.COL_DAY);
             assertEquals(IndexedColors.YELLOW.getIndex(), day6Cell.getCellStyle().getFillForegroundColor());
 
             // January 7, 2024 is Sunday (should be highlighted as weekend)
             Row day7Row = sheet.getRow(12); // headerRow(5) + day(7)
-            Cell day7Cell = day7Row.getCell(1);
+            Cell day7Cell = day7Row.getCell(XlsService.COL_DAY);
             assertEquals(IndexedColors.YELLOW.getIndex(), day7Cell.getCellStyle().getFillForegroundColor());
 
             // January 8, 2024 is Monday (regular weekday - should not be highlighted)
             Row day8Row = sheet.getRow(13); // headerRow(5) + day(8)
-            Cell day8Cell = day8Row.getCell(1);
+            Cell day8Cell = day8Row.getCell(XlsService.COL_DAY);
             assertNotEquals(IndexedColors.YELLOW.getIndex(), day8Cell.getCellStyle().getFillForegroundColor());
         }
     }
@@ -541,17 +541,17 @@ class XlsServiceTest {
 
             // February 3, 2024 is Saturday
             Row day3Row = sheet.getRow(8);
-            Cell day3Cell = day3Row.getCell(1);
+            Cell day3Cell = day3Row.getCell(XlsService.COL_DAY);
             assertEquals(IndexedColors.YELLOW.getIndex(), day3Cell.getCellStyle().getFillForegroundColor());
 
             // February 4, 2024 is Sunday
             Row day4Row = sheet.getRow(9);
-            Cell day4Cell = day4Row.getCell(1);
+            Cell day4Cell = day4Row.getCell(XlsService.COL_DAY);
             assertEquals(IndexedColors.YELLOW.getIndex(), day4Cell.getCellStyle().getFillForegroundColor());
 
             // February 5, 2024 is Monday (weekday)
             Row day5Row = sheet.getRow(10);
-            Cell day5Cell = day5Row.getCell(1);
+            Cell day5Cell = day5Row.getCell(XlsService.COL_DAY);
             assertNotEquals(IndexedColors.YELLOW.getIndex(), day5Cell.getCellStyle().getFillForegroundColor());
         }
     }
@@ -592,12 +592,12 @@ class XlsServiceTest {
 
             // Verify January 1, 2024 (holiday) is highlighted
             Row day1Row = sheet.getRow(6);
-            Cell day1Cell = day1Row.getCell(1);
+            Cell day1Cell = day1Row.getCell(XlsService.COL_DAY);
             assertEquals(IndexedColors.YELLOW.getIndex(), day1Cell.getCellStyle().getFillForegroundColor());
 
             // Verify a weekend is highlighted
             Row day6Row = sheet.getRow(11); // January 6 is Saturday
-            Cell day6Cell = day6Row.getCell(1);
+            Cell day6Cell = day6Row.getCell(XlsService.COL_DAY);
             assertEquals(IndexedColors.YELLOW.getIndex(), day6Cell.getCellStyle().getFillForegroundColor());
         }
     }
@@ -606,19 +606,19 @@ class XlsServiceTest {
 
     private void createMetaRow(Sheet sheet, int rowNum, String label, String value) {
         Row row = sheet.createRow(rowNum);
-        row.createCell(1).setCellValue(label);
-        row.createCell(2).setCellValue(value);
+        row.createCell(1).setCellValue(label);  // Column B - labels
+        row.createCell(2).setCellValue(value);   // Column C - value for meta
     }
 
     private void createDataRow(Sheet sheet, int rowNum, int day, String task, double hours) {
         Row row = sheet.createRow(rowNum);
-        row.createCell(1).setCellValue((double) day);
-        row.createCell(2).setCellValue(task);
-        row.createCell(3).setCellValue(hours); // Flexibility period
-        row.createCell(4).setCellValue(0.0);   // Outside flexibility
-        row.createCell(5).setCellValue(0.0);   // Saturdays
-        row.createCell(6).setCellValue(0.0);   // Sundays/holidays
-        row.createCell(7).setCellValue(0.0);   // Standby
-        row.createCell(8).setCellValue(0.0);   // Non-invoiceable
+        row.createCell(XlsService.COL_DAY).setCellValue((double) day);
+        row.createCell(XlsService.COL_TASK).setCellValue(task);
+        row.createCell(XlsService.COL_HOURS_FLEXIBILITY).setCellValue(hours);
+        row.createCell(XlsService.COL_HOURS_OUTSIDE_FLEXIBILITY).setCellValue(0.0);
+        row.createCell(XlsService.COL_HOURS_SATURDAYS).setCellValue(0.0);
+        row.createCell(XlsService.COL_HOURS_SUNDAYS_HOLIDAYS).setCellValue(0.0);
+        row.createCell(XlsService.COL_HOURS_STANDBY).setCellValue(0.0);
+        row.createCell(XlsService.COL_HOURS_NON_INVOICEABLE).setCellValue(0.0);
     }
 }
