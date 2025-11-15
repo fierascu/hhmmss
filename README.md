@@ -77,9 +77,7 @@ src/
 │   │       └── TimeBasedUuidGenerator.java # Unique ID generation
 │   └── resources/
 │       ├── templates/           # Thymeleaf templates
-│       │   ├── layout-ascii.html        # ASCII art theme
-│       │   ├── layout-classic.html      # Classic theme
-│       │   ├── layout.html              # Terminal theme
+│       │   ├── layout.html              # Unified layout with CSS themes (ascii, terminal, classic)
 │       │   ├── upload.html              # Upload form
 │       │   ├── footer.html              # Shared footer
 │       │   └── error.html               # Error page

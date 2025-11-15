@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org"
-      th:replace="~{${theme == 'classic' ? 'layout-classic' : (theme == 'terminal' ? 'layout' : 'layout-ascii')} :: layout(title='Upload Timesheet', content=~{::content})}">
+      th:replace="~{layout :: layout(title='Upload Timesheet', content=~{::content})}">
 
 <th:block th:fragment="content">
     <!-- Generate New Timesheet Form -->
-    <form th:action="${theme == 'classic' ? '/generate?theme=classic' : (theme == 'terminal' ? '/generate?theme=terminal' : '/generate')}"
+    <form th:action="@{/generate(theme=${theme})}"
           method="POST">
         <div class="form-group">
             <label for="monthInput">Generate timesheet for selected period</label>
@@ -26,7 +26,7 @@
 
     <!-- Upload and Convert Form -->
     <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #444;">
-        <form th:action="${theme == 'classic' ? '/?theme=classic' : (theme == 'terminal' ? '/?theme=terminal' : '/')}"
+        <form th:action="@{/(theme=${theme})}"
               enctype="multipart/form-data" method="POST">
             <div class="form-group">
                 <label for="fileInput">Upload and convert timesheet</label>
