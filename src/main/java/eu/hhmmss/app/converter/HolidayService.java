@@ -16,44 +16,44 @@ public class HolidayService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private final Map<Integer, Set<LocalDate>> holidaysByYear = new HashMap<>();
 
-    public HolidayService(
-            @Value("${holidays.2024:}") String holidays2024,
-            @Value("${holidays.2025:}") String holidays2025,
-            @Value("${holidays.2026:}") String holidays2026) {
-        loadHolidays(2024, holidays2024);
-        loadHolidays(2025, holidays2025);
-        loadHolidays(2026, holidays2026);
+    public HolidayService(@Value("${holidays:}") String holidaysProperty) {
+        loadHolidays(holidaysProperty);
     }
 
     /**
      * Loads holidays from the comma-separated property value.
+     * Automatically groups holidays by year based on the date.
      *
-     * @param year the year for these holidays
-     * @param holidaysProperty comma-separated string of holiday dates
+     * @param holidaysProperty comma-separated string of holiday dates (format: YYYY-MM-DD)
      */
-    private void loadHolidays(int year, String holidaysProperty) {
+    private void loadHolidays(String holidaysProperty) {
         if (holidaysProperty == null || holidaysProperty.trim().isEmpty()) {
-            log.warn("No holidays configured for year {}", year);
+            log.warn("No holidays configured");
             return;
         }
 
-        Set<LocalDate> holidays = new HashSet<>();
         String[] dateStrings = holidaysProperty.split(",");
+        int totalLoaded = 0;
 
         for (String dateStr : dateStrings) {
             dateStr = dateStr.trim();
             if (!dateStr.isEmpty()) {
                 try {
                     LocalDate date = LocalDate.parse(dateStr, DATE_FORMATTER);
-                    holidays.add(date);
+                    int year = date.getYear();
+
+                    holidaysByYear.computeIfAbsent(year, k -> new HashSet<>()).add(date);
+                    totalLoaded++;
                 } catch (Exception e) {
                     log.warn("Failed to parse holiday date: {}", dateStr, e);
                 }
             }
         }
 
-        holidaysByYear.put(year, holidays);
-        log.info("Loaded {} holidays for year {}", holidays.size(), year);
+        log.info("Loaded {} holidays across {} years", totalLoaded, holidaysByYear.size());
+        holidaysByYear.forEach((year, holidays) ->
+            log.info("  Year {}: {} holidays", year, holidays.size())
+        );
     }
 
     /**
