@@ -1,7 +1,6 @@
 package eu.hhmmss.app.converter;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
@@ -23,12 +22,17 @@ public class XlsService {
 
     public static final int COL_DAY = 2;
     public static final int COL_TASK = COL_DAY + 1;
-    public static final int COL_HOURS = COL_TASK + 1;
+    public static final int COL_HOURS_FLEXIBILITY = COL_TASK + 1;
+    public static final int COL_HOURS_OUTSIDE_FLEXIBILITY = COL_HOURS_FLEXIBILITY + 1;
+    public static final int COL_HOURS_SATURDAYS = COL_HOURS_OUTSIDE_FLEXIBILITY + 1;
+    public static final int COL_HOURS_SUNDAYS_HOLIDAYS = COL_HOURS_SATURDAYS + 1;
+    public static final int COL_HOURS_STANDBY = COL_HOURS_SUNDAYS_HOLIDAYS + 1;
+    public static final int COL_HOURS_NON_INVOICEABLE = COL_HOURS_STANDBY + 1;
 
     /**
      * Reads the content of the provided Excel timesheet file (expected sheet name: "Timesheet").
-     * Extracts meta fields from the left labels, the daily task (column C), and daily hours from the
-     * column whose header contains "during flexibility period".
+     * Extracts meta fields from the left labels, the daily task (column C), and 6 hours columns:
+     * D=Flexibility period, E=Outside flexibility, F=Saturdays, G=Sundays/holidays, H=Standby, I=Non-invoiceable.
      *
      * @param xlsxPath path to the Excel file, e.g. Path.of("timesheet-in.xlsx")
      * @return parsed timesheet data
@@ -66,7 +70,7 @@ public class XlsService {
                 throw new IllegalStateException("Could not find timesheet header row (column B == 'Day').");
 
 
-            // Read day rows: B=Day, C=Tasks, hours from detected column
+            // Read day rows: B=Day, C=Tasks, D-I=Hours columns
             for (int r = headerRow + 1; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
                 if (row == null) continue;
@@ -76,9 +80,25 @@ public class XlsService {
 
                 double v = Double.parseDouble(dayStr);
                 int day = (int) v;
-                String colC = getCellString(row.getCell(2));
-                Double colD = getCellNumeric(row.getCell(3));
-                hhmmssDto.getTasks().put(day, new ImmutablePair<>(colC, colD));
+                String task = getCellString(row.getCell(2));
+                double hoursFlexibility = getCellNumeric(row.getCell(3));
+                double hoursOutsideFlexibility = getCellNumeric(row.getCell(4));
+                double hoursSaturdays = getCellNumeric(row.getCell(5));
+                double hoursSundaysHolidays = getCellNumeric(row.getCell(6));
+                double hoursStandby = getCellNumeric(row.getCell(7));
+                double hoursNonInvoiceable = getCellNumeric(row.getCell(8));
+
+                DayData dayData = DayData.builder()
+                        .task(task)
+                        .hoursFlexibilityPeriod(hoursFlexibility)
+                        .hoursOutsideFlexibilityPeriod(hoursOutsideFlexibility)
+                        .hoursSaturdays(hoursSaturdays)
+                        .hoursSundaysHolidays(hoursSundaysHolidays)
+                        .hoursStandby(hoursStandby)
+                        .hoursNonInvoiceable(hoursNonInvoiceable)
+                        .build();
+
+                hhmmssDto.getTasks().put(day, dayData);
             }
         } catch (FileNotFoundException e) {
             log.error("File not found: {}", xlsxPath, e);
@@ -348,10 +368,12 @@ public class XlsService {
                     taskCell.setBlank();
                 }
 
-                // Clear hours cell (column D - index 3)
-                Cell hoursCell = row.getCell(3);
-                if (hoursCell != null) {
-                    hoursCell.setBlank();
+                // Clear all hours columns (columns D-I, indices 3-8)
+                for (int colIdx = 3; colIdx <= 8; colIdx++) {
+                    Cell hoursCell = row.getCell(colIdx);
+                    if (hoursCell != null) {
+                        hoursCell.setBlank();
+                    }
                 }
             }
         }

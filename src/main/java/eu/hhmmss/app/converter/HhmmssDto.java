@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,6 +15,6 @@ import java.util.Map;
 public class HhmmssDto {
 
     private Map<String, String> meta = new HashMap<>();
-    private Map<Integer, Pair<String, Double>> tasks = new HashMap<>();
+    private Map<Integer, DayData> tasks = new HashMap<>();
 
 }
