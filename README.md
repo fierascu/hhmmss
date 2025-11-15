@@ -164,6 +164,29 @@ The Docker setup includes:
 - **Non-root user**: Runs as unprivileged user for enhanced security
 - **Resource limits**: JVM configured for containerized environments (75% max RAM)
 - **Volume support**: Optional persistent storage for uploaded files
+- **Security hardening**: Read-only filesystem, no privilege escalation, restricted capabilities
+- **Performance optimizations**: G1GC, string deduplication, optimized heap sizing
+
+**Optimized Build Options:**
+
+For faster Docker builds (especially during development), use the provided build script:
+
+```bash
+# Standard build (default, simple)
+./build.sh
+
+# One-time: Build LibreOffice base image for faster rebuilds
+./build.sh --build-base
+
+# Fast rebuild using base image (2-3 minutes faster!)
+./build.sh --fast
+```
+
+See [DOCKER_OPTIMIZATION.md](DOCKER_OPTIMIZATION.md) for detailed information about:
+- Build speed optimizations (up to 60% faster)
+- Security enhancements (read-only filesystem, resource limits)
+- Performance tuning (optimized JVM settings)
+- Benchmarks and troubleshooting
 
 **Environment Variables:**
 - `SPRING_PROFILES_ACTIVE=docker` - Activates Docker-specific configuration
