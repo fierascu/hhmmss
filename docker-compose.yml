@@ -3,6 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # Uncomment to use pre-built LibreOffice base image for faster builds:
+      # args:
+      #   BASE_IMAGE: hhmmss-libreoffice-base:latest
     image: hhmmss:latest
     container_name: hhmmss-timesheet-converter
     ports:
@@ -18,11 +21,28 @@ services:
       - JODCONVERTER_LOCAL_OFFICE_HOME=/usr/lib/libreoffice
       - JODCONVERTER_LOCAL_PORT_NUMBERS=2002
       - JODCONVERTER_LOCAL_MAX_TASKS_PER_PROCESS=10
-      # JVM settings
-      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+      # JVM settings (these override Dockerfile defaults if needed)
+      # - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
     volumes:
       # Mount for uploaded files (optional, if you want persistence)
       - ./uploads:/app/uploads
+    # Resource limits for better container isolation
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    # Read-only root filesystem (except for writable volumes)
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=128m
+      - /app/uploads:noexec,nosuid,size=256m
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
