@@ -1,5 +1,6 @@
 package eu.hhmmss.app.converter;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.poi.ss.usermodel.*;
@@ -19,7 +20,10 @@ import java.util.Map;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class XlsService {
+
+    private final HolidayService holidayService;
 
     public static final int COL_DAY = 2;
     public static final int COL_TASK = COL_DAY + 1;
@@ -97,7 +101,7 @@ public class XlsService {
      * @param xlsxPath path to the Excel file to update
      * @throws IOException if file cannot be read or written
      */
-    public static void highlightWeekendsAndHolidaysInFile(Path xlsxPath) throws IOException {
+    public void highlightWeekendsAndHolidaysInFile(Path xlsxPath) throws IOException {
         try (InputStream in = new FileInputStream(xlsxPath.toFile());
              Workbook wb = new XSSFWorkbook(in)) {
 
@@ -212,7 +216,7 @@ public class XlsService {
      * @param newPeriod the new period value to set (in MM/YYYY format)
      * @throws IOException if file cannot be read or written
      */
-    public static void updatePeriod(Path xlsxPath, String newPeriod) throws IOException {
+    public void updatePeriod(Path xlsxPath, String newPeriod) throws IOException {
         try (InputStream in = new FileInputStream(xlsxPath.toFile());
              Workbook wb = new XSSFWorkbook(in)) {
 
@@ -367,7 +371,7 @@ public class XlsService {
      * @param sheet the Excel sheet containing the timesheet
      * @param period the period in MM/YYYY format
      */
-    private static void highlightWeekendsAndHolidays(Workbook wb, Sheet sheet, String period) {
+    private void highlightWeekendsAndHolidays(Workbook wb, Sheet sheet, String period) {
         try {
             // Parse the period to get year and month
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/yyyy");
@@ -395,9 +399,6 @@ public class XlsService {
             CellStyle yellowStyle = wb.createCellStyle();
             yellowStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
             yellowStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-
-            // Load holidays (using static method since this is a static context)
-            HolidayService holidayService = new HolidayService();
 
             int highlightedCount = 0;
 
