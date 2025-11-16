@@ -1,7 +1,5 @@
 package eu.hhmmss.app.controller;
 
-import eu.hhmmss.app.metrics.ProjectMetrics;
-import eu.hhmmss.app.metrics.ProjectMetricsService;
 import eu.hhmmss.app.metrics.TimeSavings;
 import eu.hhmmss.app.metrics.TimeSavingsService;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 /**
- * Controller for displaying project metrics and time savings.
+ * Controller for displaying time savings metrics.
  */
 @Slf4j
 @Controller
@@ -22,7 +20,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @RequestMapping("/metrics")
 public class MetricsController {
 
-    private final ProjectMetricsService projectMetricsService;
     private final TimeSavingsService timeSavingsService;
 
     /**
@@ -31,10 +28,6 @@ public class MetricsController {
     @GetMapping
     public String showMetrics(Model model) {
         try {
-            // Calculate project metrics
-            ProjectMetrics projectMetrics = projectMetricsService.calculateProjectMetrics();
-            model.addAttribute("projectMetrics", projectMetrics);
-
             // Calculate example time savings (for 1 conversion, 10 conversions, 100 conversions)
             TimeSavings oneConversion = timeSavingsService.calculateCumulativeSavings(1);
             TimeSavings tenConversions = timeSavingsService.calculateCumulativeSavings(10);
@@ -44,8 +37,7 @@ public class MetricsController {
             model.addAttribute("tenConversions", tenConversions);
             model.addAttribute("hundredConversions", hundredConversions);
 
-            log.info("Displaying metrics page - {} commits, {:.2f} hours estimated",
-                    projectMetrics.getTotalCommits(), projectMetrics.getEstimatedHours());
+            log.info("Displaying time savings metrics page");
 
         } catch (Exception e) {
             log.error("Error loading metrics", e);
@@ -53,15 +45,6 @@ public class MetricsController {
         }
 
         return "metrics";
-    }
-
-    /**
-     * Get project metrics as JSON.
-     */
-    @GetMapping("/project")
-    @ResponseBody
-    public ProjectMetrics getProjectMetrics() {
-        return projectMetricsService.calculateProjectMetrics();
     }
 
     /**

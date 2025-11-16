@@ -1,7 +1,5 @@
 package eu.hhmmss.app.controller;
 
-import eu.hhmmss.app.metrics.ProjectMetrics;
-import eu.hhmmss.app.metrics.ProjectMetricsService;
 import eu.hhmmss.app.metrics.TimeSavings;
 import eu.hhmmss.app.metrics.TimeSavingsService;
 import org.junit.jupiter.api.Test;
@@ -9,9 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.time.LocalDateTime;
-import java.util.HashMap;
 
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
@@ -25,24 +20,11 @@ class MetricsControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private ProjectMetricsService projectMetricsService;
-
-    @MockBean
     private TimeSavingsService timeSavingsService;
 
     @Test
     void testShowMetrics_displaysMetricsPage() throws Exception {
         // Arrange
-        ProjectMetrics projectMetrics = ProjectMetrics.builder()
-                .totalCommits(50)
-                .estimatedHours(100.0)
-                .firstCommitDate(LocalDateTime.now().minusDays(30))
-                .lastCommitDate(LocalDateTime.now())
-                .daysActive(30)
-                .uniqueAuthors(2)
-                .authorStats(new HashMap<>())
-                .build();
-
         TimeSavings savings = TimeSavings.builder()
                 .numberOfConversions(1)
                 .daysProcessed(20)
@@ -50,34 +32,15 @@ class MetricsControllerTest {
                 .percentImprovement(95.0)
                 .build();
 
-        when(projectMetricsService.calculateProjectMetrics()).thenReturn(projectMetrics);
         when(timeSavingsService.calculateCumulativeSavings(anyInt())).thenReturn(savings);
 
         // Act & Assert
         mockMvc.perform(get("/metrics"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("metrics"))
-                .andExpect(model().attributeExists("projectMetrics"))
                 .andExpect(model().attributeExists("oneConversion"))
                 .andExpect(model().attributeExists("tenConversions"))
                 .andExpect(model().attributeExists("hundredConversions"));
-    }
-
-    @Test
-    void testGetProjectMetrics_returnsJson() throws Exception {
-        // Arrange
-        ProjectMetrics projectMetrics = ProjectMetrics.builder()
-                .totalCommits(50)
-                .estimatedHours(100.0)
-                .build();
-
-        when(projectMetricsService.calculateProjectMetrics()).thenReturn(projectMetrics);
-
-        // Act & Assert
-        mockMvc.perform(get("/metrics/project"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalCommits").value(50))
-                .andExpect(jsonPath("$.estimatedHours").value(100.0));
     }
 
     @Test
@@ -118,8 +81,8 @@ class MetricsControllerTest {
     @Test
     void testShowMetrics_handlesErrors() throws Exception {
         // Arrange
-        when(projectMetricsService.calculateProjectMetrics())
-                .thenThrow(new RuntimeException("Git error"));
+        when(timeSavingsService.calculateCumulativeSavings(anyInt()))
+                .thenThrow(new RuntimeException("Calculation error"));
 
         // Act & Assert
         mockMvc.perform(get("/metrics"))
