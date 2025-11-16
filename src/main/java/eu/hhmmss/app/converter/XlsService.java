@@ -3,6 +3,7 @@ package eu.hhmmss.app.converter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +30,12 @@ public class XlsService {
     public static final int COL_HOURS_STANDBY = 7;  // Column H
     public static final int COL_HOURS_NON_INVOICEABLE = 8;  // Column I
 
+    private static final XSSFColor ORANGY_FFC000 = new XSSFColor(new byte[]{
+            (byte) 0xFF,  // R
+            (byte) 0xC0,  // G
+            (byte) 0x00   // B
+    }, null);
+
     /**
      * Reads the content of the provided Excel timesheet file (expected sheet name: "Timesheet").
      * Extracts meta fields from the left labels, the daily task (column C), and 6 hours columns:
@@ -36,7 +43,6 @@ public class XlsService {
      *
      * @param xlsxPath path to the Excel file, e.g. Path.of("timesheet-in.xlsx")
      * @return parsed timesheet data
-     * @throws IOException           if file is missing or not readable
      * @throws IllegalStateException if the expected sheet/headers are not found
      */
     public static HhmmssDto readTimesheet(Path xlsxPath) {
@@ -419,45 +425,56 @@ public class XlsService {
                 return;
             }
 
-            int highlightedCount = 0;
+            int highlightedYellowCount = 0;
+            int highlightedOrangeCount = 0;
 
-            // Cache for styles - we'll create one yellow style per unique original style
+            // Cache for styles - we'll create one colored style per unique original style
             // This prevents hitting POI's style limit while preserving borders and other formatting
             java.util.Map<Short, CellStyle> yellowStyleCache = new java.util.HashMap<>();
+            java.util.Map<Short, CellStyle> orangeStyleCache = new java.util.HashMap<>();
 
             // Process each day in the month
             for (int day = 1; day <= daysInMonth; day++) {
                 LocalDate date = LocalDate.of(year, month, day);
+                Row row = sheet.getRow(headerRow + day);
+                if (row == null) continue;
 
-                // Check if this day is a weekend or holiday
+                Cell dayCell = row.getCell(COL_DAY);
+                if (dayCell == null) continue;
+
+                CellStyle originalStyle = dayCell.getCellStyle();
+                short originalStyleIndex = originalStyle.getIndex();
+
+                // Check if this day is a weekend or holiday (priority: yellow for weekends/holidays)
                 if (HolidayService.isWeekend(date) || holidayService.isHoliday(date)) {
-                    Row row = sheet.getRow(headerRow + day);
-                    if (row != null) {
-                        // Apply yellow background to day cell (column B)
-                        Cell dayCell = row.getCell(COL_DAY);
-                        if (dayCell != null) {
-                            // Get or create a yellow version of this cell's style
-                            CellStyle originalStyle = dayCell.getCellStyle();
-                            short originalStyleIndex = originalStyle.getIndex();
-
-                            CellStyle yellowStyle = yellowStyleCache.get(originalStyleIndex);
-                            if (yellowStyle == null) {
-                                // Create a new style that preserves borders and other formatting
-                                yellowStyle = wb.createCellStyle();
-                                yellowStyle.cloneStyleFrom(originalStyle);
-                                yellowStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-                                yellowStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
-                                yellowStyleCache.put(originalStyleIndex, yellowStyle);
-                            }
-
-                            dayCell.setCellStyle(yellowStyle);
-                            highlightedCount++;
-                        }
+                    CellStyle yellowStyle = yellowStyleCache.get(originalStyleIndex);
+                    if (yellowStyle == null) {
+                        yellowStyle = wb.createCellStyle();
+                        yellowStyle.cloneStyleFrom(originalStyle);
+                        yellowStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+                        yellowStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+                        yellowStyleCache.put(originalStyleIndex, yellowStyle);
                     }
+                    dayCell.setCellStyle(yellowStyle);
+                    highlightedYellowCount++;
+                }
+                // Check if this day is an EP Long Friday (only if not already highlighted)
+                else if (holidayService.isEpLongFriday(date)) {
+                    CellStyle orangeStyle = orangeStyleCache.get(originalStyleIndex);
+                    if (orangeStyle == null) {
+                        orangeStyle = wb.createCellStyle();
+                        orangeStyle.cloneStyleFrom(originalStyle);
+                        orangeStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+                        orangeStyle.setFillForegroundColor(ORANGY_FFC000);
+                        orangeStyleCache.put(originalStyleIndex, orangeStyle);
+                    }
+                    dayCell.setCellStyle(orangeStyle);
+                    highlightedOrangeCount++;
                 }
             }
 
-            log.info("Highlighted {} weekend/holiday days in Excel", highlightedCount);
+            log.info("Highlighted {} weekend/holiday days and {} EP Long Fridays in Excel",
+                    highlightedYellowCount, highlightedOrangeCount);
 
         } catch (Exception e) {
             log.warn("Failed to highlight weekends/holidays in Excel", e);
