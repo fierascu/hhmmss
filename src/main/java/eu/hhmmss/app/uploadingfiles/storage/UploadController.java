@@ -195,10 +195,10 @@ public class UploadController {
 
         // Build list of generated files for display
         java.util.List<String> generatedFiles = new java.util.ArrayList<>();
-        generatedFiles.add(uuidFilename + " (Uploaded Excel)");
-        generatedFiles.add(extractedFilename + " (Generated Timesheet DOCX)");
-        generatedFiles.add(xlsPdfFilename + " (Input Excel as PDF)");
-        generatedFiles.add(docPdfFilename + " (Timesheet as PDF)");
+        generatedFiles.add("Uploaded Excel");
+        generatedFiles.add("Generated Timesheet DOCX");
+        generatedFiles.add("Input Excel as PDF");
+        generatedFiles.add("Timesheet as PDF");
 
         // Build file URLs for download links
         java.util.List<String> generatedFileUrls = new java.util.ArrayList<>();
@@ -260,8 +260,8 @@ public class UploadController {
 
         // Build list of generated files for display
         java.util.List<String> generatedFiles = new java.util.ArrayList<>();
-        generatedFiles.add(uuidFilename + " (Uploaded ZIP)");
-        generatedFiles.add(result.resultZipFileName() + " (Converted Timesheets - DOCX + PDFs)");
+        generatedFiles.add("Uploaded ZIP");
+        generatedFiles.add("Converted Timesheets - DOCX + PDFs");
 
         // Build file URLs for download links
         java.util.List<String> generatedFileUrls = new java.util.ArrayList<>();
@@ -373,7 +373,7 @@ public class UploadController {
 
             // Build list of generated files for display (only Excel)
             java.util.List<String> generatedFiles = new java.util.ArrayList<>();
-            generatedFiles.add(filename + " (Generated Excel for " + formattedPeriod + ")");
+            generatedFiles.add("Generated Excel for " + formattedPeriod);
 
             // Build file URLs for download links
             java.util.List<String> generatedFileUrls = new java.util.ArrayList<>();
