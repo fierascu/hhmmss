@@ -1,13 +1,9 @@
 package eu.hhmmss.app.converter;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -20,51 +16,44 @@ public class HolidayService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private final Map<Integer, Set<LocalDate>> holidaysByYear = new HashMap<>();
 
-    public HolidayService() {
-        loadHolidays();
+    public HolidayService(@Value("${holidays:}") String holidaysProperty) {
+        loadHolidays(holidaysProperty);
     }
 
     /**
-     * Loads holidays from the JSON configuration file.
+     * Loads holidays from the comma-separated property value.
+     * Automatically groups holidays by year based on the date.
+     *
+     * @param holidaysProperty comma-separated string of holiday dates (format: YYYY-MM-DD)
      */
-    private void loadHolidays() {
-        try {
-            ClassPathResource resource = new ClassPathResource("config/holidays.json");
-            if (!resource.exists()) {
-                log.warn("Holidays configuration file not found, continuing without holidays");
-                return;
-            }
+    private void loadHolidays(String holidaysProperty) {
+        if (holidaysProperty == null || holidaysProperty.trim().isEmpty()) {
+            log.warn("No holidays configured");
+            return;
+        }
 
-            try (InputStream inputStream = resource.getInputStream()) {
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode root = mapper.readTree(inputStream);
+        String[] dateStrings = holidaysProperty.split(",");
+        int totalLoaded = 0;
 
-                Iterator<Map.Entry<String, JsonNode>> fields = root.fields();
-                while (fields.hasNext()) {
-                    Map.Entry<String, JsonNode> entry = fields.next();
-                    int year = Integer.parseInt(entry.getKey());
-                    Set<LocalDate> holidays = new HashSet<>();
+        for (String dateStr : dateStrings) {
+            dateStr = dateStr.trim();
+            if (!dateStr.isEmpty()) {
+                try {
+                    LocalDate date = LocalDate.parse(dateStr, DATE_FORMATTER);
+                    int year = date.getYear();
 
-                    JsonNode yearHolidays = entry.getValue();
-                    if (yearHolidays.isArray()) {
-                        for (JsonNode dateNode : yearHolidays) {
-                            String dateStr = dateNode.asText();
-                            try {
-                                LocalDate date = LocalDate.parse(dateStr, DATE_FORMATTER);
-                                holidays.add(date);
-                            } catch (Exception e) {
-                                log.warn("Failed to parse holiday date: {}", dateStr, e);
-                            }
-                        }
-                    }
-
-                    holidaysByYear.put(year, holidays);
-                    log.info("Loaded {} holidays for year {}", holidays.size(), year);
+                    holidaysByYear.computeIfAbsent(year, k -> new HashSet<>()).add(date);
+                    totalLoaded++;
+                } catch (Exception e) {
+                    log.warn("Failed to parse holiday date: {}", dateStr, e);
                 }
             }
-        } catch (IOException e) {
-            log.error("Failed to load holidays configuration", e);
         }
+
+        log.info("Loaded {} holidays across {} years", totalLoaded, holidaysByYear.size());
+        holidaysByYear.forEach((year, holidays) ->
+            log.info("  Year {}: {} holidays", year, holidays.size())
+        );
     }
 
     /**

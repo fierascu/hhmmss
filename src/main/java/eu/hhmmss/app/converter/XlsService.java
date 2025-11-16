@@ -1,15 +1,12 @@
 package eu.hhmmss.app.converter;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -18,7 +15,10 @@ import java.util.Map;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class XlsService {
+
+    private final HolidayService holidayService;
 
     public static final int COL_DAY = 1;  // Column B
     public static final int COL_TASK = 2;  // Column C
@@ -123,7 +123,7 @@ public class XlsService {
      * @param xlsxPath path to the Excel file to update
      * @throws IOException if file cannot be read or written
      */
-    public static void highlightWeekendsAndHolidaysInFile(Path xlsxPath) throws IOException {
+    public void highlightWeekendsAndHolidaysInFile(Path xlsxPath) throws IOException {
         try (InputStream in = new FileInputStream(xlsxPath.toFile());
              Workbook wb = new XSSFWorkbook(in)) {
 
@@ -238,7 +238,7 @@ public class XlsService {
      * @param newPeriod the new period value to set (in MM/YYYY format)
      * @throws IOException if file cannot be read or written
      */
-    public static void updatePeriod(Path xlsxPath, String newPeriod) throws IOException {
+    public void updatePeriod(Path xlsxPath, String newPeriod) throws IOException {
         try (InputStream in = new FileInputStream(xlsxPath.toFile());
              Workbook wb = new XSSFWorkbook(in)) {
 
@@ -395,7 +395,7 @@ public class XlsService {
      * @param sheet the Excel sheet containing the timesheet
      * @param period the period in MM/YYYY format
      */
-    private static void highlightWeekendsAndHolidays(Workbook wb, Sheet sheet, String period) {
+    private void highlightWeekendsAndHolidays(Workbook wb, Sheet sheet, String period) {
         try {
             // Parse the period to get year and month
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/yyyy");
@@ -419,15 +419,11 @@ public class XlsService {
                 return;
             }
 
-            // Create yellow fill style
-            CellStyle yellowStyle = wb.createCellStyle();
-            yellowStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
-            yellowStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-
-            // Load holidays (using static method since this is a static context)
-            HolidayService holidayService = new HolidayService();
-
             int highlightedCount = 0;
+
+            // Cache for styles - we'll create one yellow style per unique original style
+            // This prevents hitting POI's style limit while preserving borders and other formatting
+            java.util.Map<Short, CellStyle> yellowStyleCache = new java.util.HashMap<>();
 
             // Process each day in the month
             for (int day = 1; day <= daysInMonth; day++) {
@@ -440,12 +436,21 @@ public class XlsService {
                         // Apply yellow background to day cell (column B)
                         Cell dayCell = row.getCell(COL_DAY);
                         if (dayCell != null) {
-                            // Preserve existing cell value and type, just change the style
-                            CellStyle newStyle = wb.createCellStyle();
-                            newStyle.cloneStyleFrom(dayCell.getCellStyle());
-                            newStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
-                            newStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-                            dayCell.setCellStyle(newStyle);
+                            // Get or create a yellow version of this cell's style
+                            CellStyle originalStyle = dayCell.getCellStyle();
+                            short originalStyleIndex = originalStyle.getIndex();
+
+                            CellStyle yellowStyle = yellowStyleCache.get(originalStyleIndex);
+                            if (yellowStyle == null) {
+                                // Create a new style that preserves borders and other formatting
+                                yellowStyle = wb.createCellStyle();
+                                yellowStyle.cloneStyleFrom(originalStyle);
+                                yellowStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+                                yellowStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+                                yellowStyleCache.put(originalStyleIndex, yellowStyle);
+                            }
+
+                            dayCell.setCellStyle(yellowStyle);
                             highlightedCount++;
                         }
                     }

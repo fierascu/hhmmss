@@ -43,6 +43,7 @@ public class UploadController {
     private final ZipProcessingService zipProcessingService;
     private final PdfService pdfService;
     private final ThrottlingService throttlingService;
+    private final XlsService xlsService;
 
     @Value("${app.upload.max-xlsx-size}")
     private long maxXlsxSize;
@@ -155,7 +156,7 @@ public class UploadController {
 
         // Apply weekend/holiday highlighting to the uploaded file
         try {
-            XlsService.highlightWeekendsAndHolidaysInFile(uploadedFilePath);
+            xlsService.highlightWeekendsAndHolidaysInFile(uploadedFilePath);
         } catch (IOException e) {
             log.error("Failed to highlight weekends/holidays in Excel file", e);
             // Continue processing even if highlighting fails
@@ -362,7 +363,7 @@ public class UploadController {
 
                 // Update period in the Excel file (also adjusts days and highlights weekends/holidays)
                 try {
-                    XlsService.updatePeriod(generatedExcelPath, formattedPeriod);
+                    xlsService.updatePeriod(generatedExcelPath, formattedPeriod);
                 } catch (IOException e) {
                     log.error("Failed to update period in Excel file", e);
                     redirectAttributes.addFlashAttribute("errorMessage", "Failed to update period: " + e.getMessage());
