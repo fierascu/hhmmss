@@ -1,7 +1,6 @@
 package eu.hhmmss.app.converter;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.poi.xwpf.usermodel.*;
 import org.springframework.stereotype.Service;
 
@@ -86,7 +85,15 @@ public class DocService {
             replaceInlineAfterLabel(doc, "Name of person:", fullName);
             replaceInlineAfterLabel(doc, "Profile:", ""); // left blank
             replaceInlineAfterLabel(doc, "Seniority level", meta.get("Profile - Seniority level:"));
-            replaceInlineAfterLabel(doc, "Date and signature:", meta.get("Period (month/year):"));
+
+            // Signature fields - contractor
+            replaceInlineAfterLabel(doc, "Date and signature:", meta.get("Date and signature:"));
+            replaceInlineAfterLabel(doc, "Additional comments:", meta.get("Additional comments:"));
+            replaceInlineAfterLabel(doc, "Comments and signature", meta.get("Additional comments:"));
+
+            // Signature fields - contractee
+            replaceInlineAfterLabel(doc, "Official responsible for acceptance:", meta.get("Official responsible for acceptance:"));
+            replaceInlineAfterLabel(doc, "Date (acceptance):", meta.get("Date (acceptance):"));
 
             if (doc.getTables().isEmpty()) throw new IllegalStateException("No tables found in template.");
             XWPFTable t = doc.getTables().getFirst();
@@ -100,32 +107,60 @@ public class DocService {
             int daysInMonth = getDaysInMonth(period);
             log.info("Generating DOCX for {} days in month (period: {})", daysInMonth, period);
 
-            double total = 0.0;
-            for (int day = 1; day <= 31; day++) {
+            // Track totals for all 6 hours columns
+            double totalFlexibility = 0.0;
+            double totalOutsideFlexibility = 0.0;
+            double totalSaturdays = 0.0;
+            double totalSundaysHolidays = 0.0;
+            double totalStandby = 0.0;
+            double totalNonInvoiceable = 0.0;
+
+            // Process each day in the month
+            for (int day = 1; day <= daysInMonth; day++) {
+                DayData dayData = hhmmssDto.getTasks().get(day);
+                if (dayData == null) continue;
+
                 XWPFTableRow row = t.getRow(day); // 1-based day aligns with row index (since header is 0)
                 if (row == null) row = t.createRow();
 
-                if (day <= daysInMonth) {
-                    // Process days within the month
-                    Pair<String, Double> dailyTask = hhmmssDto.getTasks().get(day);
-                    if (dailyTask == null) continue;
-                    setCellText(row.getCell(1), defaultString(dailyTask.getKey()));
+                setCellText(row.getCell(1), defaultString(dayData.getTask()));
 
-                    double h = dailyTask.getValue();
-                    if (h > 0) {
-                        setCellText(row.getCell(2), df.format(h));
-                        total += h;
-                    }
-                } else {
-                    // Clear cells for days beyond the month
-                    setCellText(row.getCell(1), "");
-                    setCellText(row.getCell(2), "");
+                // Write all 6 hours columns
+                if (dayData.getHoursFlexibilityPeriod() > 0) {
+                    setCellText(row.getCell(2), df.format(dayData.getHoursFlexibilityPeriod()));
+                    totalFlexibility += dayData.getHoursFlexibilityPeriod();
+                }
+                if (dayData.getHoursOutsideFlexibilityPeriod() > 0) {
+                    setCellText(row.getCell(3), df.format(dayData.getHoursOutsideFlexibilityPeriod()));
+                    totalOutsideFlexibility += dayData.getHoursOutsideFlexibilityPeriod();
+                }
+                if (dayData.getHoursSaturdays() > 0) {
+                    setCellText(row.getCell(4), df.format(dayData.getHoursSaturdays()));
+                    totalSaturdays += dayData.getHoursSaturdays();
+                }
+                if (dayData.getHoursSundaysHolidays() > 0) {
+                    setCellText(row.getCell(5), df.format(dayData.getHoursSundaysHolidays()));
+                    totalSundaysHolidays += dayData.getHoursSundaysHolidays();
+                }
+                if (dayData.getHoursStandby() > 0) {
+                    setCellText(row.getCell(6), df.format(dayData.getHoursStandby()));
+                    totalStandby += dayData.getHoursStandby();
+                }
+                if (dayData.getHoursNonInvoiceable() > 0) {
+                    setCellText(row.getCell(7), df.format(dayData.getHoursNonInvoiceable()));
+                    totalNonInvoiceable += dayData.getHoursNonInvoiceable();
                 }
             }
 
+            // Write totals for all 6 hours columns
             XWPFTableRow tot = t.getRow(32);
             if (tot == null) tot = t.createRow();
-            setCellText(tot.getCell(2), df.format(total));
+            setCellText(tot.getCell(2), df.format(totalFlexibility));
+            setCellText(tot.getCell(3), df.format(totalOutsideFlexibility));
+            setCellText(tot.getCell(4), df.format(totalSaturdays));
+            setCellText(tot.getCell(5), df.format(totalSundaysHolidays));
+            setCellText(tot.getCell(6), df.format(totalStandby));
+            setCellText(tot.getCell(7), df.format(totalNonInvoiceable));
 
             try (FileOutputStream fos = new FileOutputStream(outDocx.toFile())) {
                 doc.write(fos);

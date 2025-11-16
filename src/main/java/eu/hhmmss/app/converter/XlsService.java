@@ -2,7 +2,6 @@ package eu.hhmmss.app.converter;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
@@ -25,14 +24,19 @@ public class XlsService {
 
     private final HolidayService holidayService;
 
-    public static final int COL_DAY = 2;
-    public static final int COL_TASK = COL_DAY + 1;
-    public static final int COL_HOURS = COL_TASK + 1;
+    public static final int COL_DAY = 1;  // Column B
+    public static final int COL_TASK = 2;  // Column C
+    public static final int COL_HOURS_FLEXIBILITY = 3;  // Column D
+    public static final int COL_HOURS_OUTSIDE_FLEXIBILITY = 4;  // Column E
+    public static final int COL_HOURS_SATURDAYS = 5;  // Column F
+    public static final int COL_HOURS_SUNDAYS_HOLIDAYS = 6;  // Column G
+    public static final int COL_HOURS_STANDBY = 7;  // Column H
+    public static final int COL_HOURS_NON_INVOICEABLE = 8;  // Column I
 
     /**
      * Reads the content of the provided Excel timesheet file (expected sheet name: "Timesheet").
-     * Extracts meta fields from the left labels, the daily task (column C), and daily hours from the
-     * column whose header contains "during flexibility period".
+     * Extracts meta fields from the left labels, the daily task (column C), and 6 hours columns:
+     * D=Flexibility period, E=Outside flexibility, F=Saturdays, G=Sundays/holidays, H=Standby, I=Non-invoiceable.
      *
      * @param xlsxPath path to the Excel file, e.g. Path.of("timesheet-in.xlsx")
      * @return parsed timesheet data
@@ -56,6 +60,12 @@ public class XlsService {
             meta.put("First Name of person:", findRightSideValue(sheet, "First Name of person:"));
             meta.put("Profile - Seniority level:", findRightSideValue(sheet, "Profile - Seniority level:"));
 
+            // Signature fields
+            meta.put("Date and signature:", findRightSideValue(sheet, "Date and signature:"));
+            meta.put("Additional comments:", findRightSideValue(sheet, "Additional comments:"));
+            meta.put("Official responsible for acceptance:", findRightSideValue(sheet, "Official responsible for acceptance:"));
+            meta.put("Date (acceptance):", findRightSideValue(sheet, "Date (acceptance):"));
+
             // Find header row where column B equals "Day"
             int headerRow = -1;
             for (Row r : sheet) {
@@ -70,19 +80,35 @@ public class XlsService {
                 throw new IllegalStateException("Could not find timesheet header row (column B == 'Day').");
 
 
-            // Read day rows: B=Day, C=Tasks, hours from detected column
+            // Read day rows: B=Day, C=Tasks, D-I=Hours columns
             for (int r = headerRow + 1; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
                 if (row == null) continue;
-                String dayStr = getCellString(row.getCell(1)).trim();
+                String dayStr = getCellString(row.getCell(COL_DAY)).trim();
 
                 if (!dayStr.endsWith(".0")) continue;
 
                 double v = Double.parseDouble(dayStr);
                 int day = (int) v;
-                String colC = getCellString(row.getCell(2));
-                Double colD = getCellNumeric(row.getCell(3));
-                hhmmssDto.getTasks().put(day, new ImmutablePair<>(colC, colD));
+                String task = getCellString(row.getCell(COL_TASK));
+                double hoursFlexibility = getCellNumeric(row.getCell(COL_HOURS_FLEXIBILITY));
+                double hoursOutsideFlexibility = getCellNumeric(row.getCell(COL_HOURS_OUTSIDE_FLEXIBILITY));
+                double hoursSaturdays = getCellNumeric(row.getCell(COL_HOURS_SATURDAYS));
+                double hoursSundaysHolidays = getCellNumeric(row.getCell(COL_HOURS_SUNDAYS_HOLIDAYS));
+                double hoursStandby = getCellNumeric(row.getCell(COL_HOURS_STANDBY));
+                double hoursNonInvoiceable = getCellNumeric(row.getCell(COL_HOURS_NON_INVOICEABLE));
+
+                DayData dayData = DayData.builder()
+                        .task(task)
+                        .hoursFlexibilityPeriod(hoursFlexibility)
+                        .hoursOutsideFlexibilityPeriod(hoursOutsideFlexibility)
+                        .hoursSaturdays(hoursSaturdays)
+                        .hoursSundaysHolidays(hoursSundaysHolidays)
+                        .hoursStandby(hoursStandby)
+                        .hoursNonInvoiceable(hoursNonInvoiceable)
+                        .build();
+
+                hhmmssDto.getTasks().put(day, dayData);
             }
         } catch (FileNotFoundException e) {
             log.error("File not found: {}", xlsxPath, e);
@@ -321,10 +347,10 @@ public class XlsService {
             }
 
             // Ensure day number cell exists
-            Cell dayCell = row.getCell(1);
+            Cell dayCell = row.getCell(COL_DAY);
             if (dayCell == null || getCellString(dayCell).trim().isEmpty()) {
                 if (dayCell == null) {
-                    dayCell = row.createCell(1);
+                    dayCell = row.createCell(COL_DAY);
                 }
                 dayCell.setCellValue((double) day);
                 log.info("Set day number {} in row {}", day, rowIndex);
@@ -337,7 +363,7 @@ public class XlsService {
             Row row = sheet.getRow(rowIndex);
             if (row != null) {
                 // Clear the day number cell (column B)
-                Cell dayCell = row.getCell(1);
+                Cell dayCell = row.getCell(COL_DAY);
                 if (dayCell != null) {
                     String dayStr = getCellString(dayCell).trim();
                     // Only clear if it matches the expected day number
@@ -346,16 +372,18 @@ public class XlsService {
                     }
                 }
 
-                // Clear task cell (column C - index 2)
-                Cell taskCell = row.getCell(2);
+                // Clear task cell (column C)
+                Cell taskCell = row.getCell(COL_TASK);
                 if (taskCell != null) {
                     taskCell.setBlank();
                 }
 
-                // Clear hours cell (column D - index 3)
-                Cell hoursCell = row.getCell(3);
-                if (hoursCell != null) {
-                    hoursCell.setBlank();
+                // Clear all hours columns (columns D-I)
+                for (int colIdx = COL_HOURS_FLEXIBILITY; colIdx <= COL_HOURS_NON_INVOICEABLE; colIdx++) {
+                    Cell hoursCell = row.getCell(colIdx);
+                    if (hoursCell != null) {
+                        hoursCell.setBlank();
+                    }
                 }
             }
         }
@@ -411,7 +439,7 @@ public class XlsService {
                     Row row = sheet.getRow(headerRow + day);
                     if (row != null) {
                         // Apply yellow background to day cell (column B)
-                        Cell dayCell = row.getCell(1);
+                        Cell dayCell = row.getCell(COL_DAY);
                         if (dayCell != null) {
                             // Preserve existing cell value and type, just change the style
                             CellStyle newStyle = wb.createCellStyle();
