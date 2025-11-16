@@ -6,11 +6,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -423,12 +419,11 @@ public class XlsService {
                 return;
             }
 
-            // Create yellow fill style
-            CellStyle yellowStyle = wb.createCellStyle();
-            yellowStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
-            yellowStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-
             int highlightedCount = 0;
+
+            // Cache for styles - we'll create one yellow style per unique original style
+            // This prevents hitting POI's style limit while preserving borders and other formatting
+            java.util.Map<Short, CellStyle> yellowStyleCache = new java.util.HashMap<>();
 
             // Process each day in the month
             for (int day = 1; day <= daysInMonth; day++) {
@@ -441,12 +436,21 @@ public class XlsService {
                         // Apply yellow background to day cell (column B)
                         Cell dayCell = row.getCell(COL_DAY);
                         if (dayCell != null) {
-                            // Preserve existing cell value and type, just change the style
-                            CellStyle newStyle = wb.createCellStyle();
-                            newStyle.cloneStyleFrom(dayCell.getCellStyle());
-                            newStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
-                            newStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-                            dayCell.setCellStyle(newStyle);
+                            // Get or create a yellow version of this cell's style
+                            CellStyle originalStyle = dayCell.getCellStyle();
+                            short originalStyleIndex = originalStyle.getIndex();
+
+                            CellStyle yellowStyle = yellowStyleCache.get(originalStyleIndex);
+                            if (yellowStyle == null) {
+                                // Create a new style that preserves borders and other formatting
+                                yellowStyle = wb.createCellStyle();
+                                yellowStyle.cloneStyleFrom(originalStyle);
+                                yellowStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+                                yellowStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+                                yellowStyleCache.put(originalStyleIndex, yellowStyle);
+                            }
+
+                            dayCell.setCellStyle(yellowStyle);
                             highlightedCount++;
                         }
                     }

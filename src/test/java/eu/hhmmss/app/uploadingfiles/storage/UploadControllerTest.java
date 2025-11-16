@@ -1,6 +1,7 @@
 package eu.hhmmss.app.uploadingfiles.storage;
 
 import eu.hhmmss.app.converter.PdfService;
+import eu.hhmmss.app.converter.XlsService;
 import eu.hhmmss.app.converter.ZipProcessingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.nio.file.Files;
@@ -23,7 +25,6 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import org.springframework.test.context.TestPropertySource;
 
 @WebMvcTest(UploadController.class)
 @TestPropertySource(properties = {
@@ -46,6 +47,9 @@ class UploadControllerTest {
 
     @MockBean
     private ThrottlingService throttlingService;
+
+    @MockBean
+    private XlsService xlsService;
 
     @Test
     void testListUploadedFiles() throws Exception {

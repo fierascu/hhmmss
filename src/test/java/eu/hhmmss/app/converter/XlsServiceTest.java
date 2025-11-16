@@ -503,20 +503,20 @@ class XlsServiceTest {
             Cell day1Cell = day1Row.getCell(XlsService.COL_DAY);
             assertEquals(IndexedColors.YELLOW.getIndex(), day1Cell.getCellStyle().getFillForegroundColor());
 
-            // January 6, 2024 is Saturday (should be highlighted as weekend)
+            // January 4, 2025 is Saturday (should be highlighted as weekend)
+            Row day4Row = sheet.getRow(9); // headerRow(5) + day(4)
+            Cell day4Cell = day4Row.getCell(XlsService.COL_DAY);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day4Cell.getCellStyle().getFillForegroundColor());
+
+            // January 5, 2025 is Sunday (should be highlighted as weekend)
+            Row day5Row = sheet.getRow(10); // headerRow(5) + day(5)
+            Cell day5Cell = day5Row.getCell(XlsService.COL_DAY);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day5Cell.getCellStyle().getFillForegroundColor());
+
+            // January 6, 2025 is Monday (regular weekday - should not be highlighted)
             Row day6Row = sheet.getRow(11); // headerRow(5) + day(6)
             Cell day6Cell = day6Row.getCell(XlsService.COL_DAY);
-            assertEquals(IndexedColors.YELLOW.getIndex(), day6Cell.getCellStyle().getFillForegroundColor());
-
-            // January 7, 2024 is Sunday (should be highlighted as weekend)
-            Row day7Row = sheet.getRow(12); // headerRow(5) + day(7)
-            Cell day7Cell = day7Row.getCell(XlsService.COL_DAY);
-            assertEquals(IndexedColors.YELLOW.getIndex(), day7Cell.getCellStyle().getFillForegroundColor());
-
-            // January 8, 2024 is Monday (regular weekday - should not be highlighted)
-            Row day8Row = sheet.getRow(13); // headerRow(5) + day(8)
-            Cell day8Cell = day8Row.getCell(XlsService.COL_DAY);
-            assertNotEquals(IndexedColors.YELLOW.getIndex(), day8Cell.getCellStyle().getFillForegroundColor());
+            assertNotEquals(IndexedColors.YELLOW.getIndex(), day6Cell.getCellStyle().getFillForegroundColor());
         }
     }
 
@@ -607,10 +607,10 @@ class XlsServiceTest {
             Cell day1Cell = day1Row.getCell(XlsService.COL_DAY);
             assertEquals(IndexedColors.YELLOW.getIndex(), day1Cell.getCellStyle().getFillForegroundColor());
 
-            // Verify a weekend is highlighted
-            Row day6Row = sheet.getRow(11); // January 6 is Saturday
-            Cell day6Cell = day6Row.getCell(XlsService.COL_DAY);
-            assertEquals(IndexedColors.YELLOW.getIndex(), day6Cell.getCellStyle().getFillForegroundColor());
+            // Verify a weekend is highlighted - January 4, 2025 is Saturday
+            Row day4Row = sheet.getRow(9); // headerRow(5) + day(4)
+            Cell day4Cell = day4Row.getCell(XlsService.COL_DAY);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day4Cell.getCellStyle().getFillForegroundColor());
         }
     }
 
