@@ -24,7 +24,7 @@ class DocServiceTest {
         assertEquals(30, hhmmssXlsxFormat.getTasks().size());
         assertEquals("work", hhmmssXlsxFormat.getTasks().get(30).getTask());
         assertEquals(8.5d, hhmmssXlsxFormat.getTasks().get(30).getHoursFlexibilityPeriod());
-        assertEquals(6, hhmmssXlsxFormat.getMeta().size());
+        assertEquals(10, hhmmssXlsxFormat.getMeta().size()); // 6 basic + 4 signature fields
         assertEquals("contract_no", hhmmssXlsxFormat.getMeta().get("Specific Contract Reference:"));
 
         Path docxInFilePath = Path.of("src/test/resources/timesheet-out.docx");

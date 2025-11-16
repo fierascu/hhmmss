@@ -85,7 +85,15 @@ public class DocService {
             replaceInlineAfterLabel(doc, "Name of person:", fullName);
             replaceInlineAfterLabel(doc, "Profile:", ""); // left blank
             replaceInlineAfterLabel(doc, "Seniority level", meta.get("Profile - Seniority level:"));
-            replaceInlineAfterLabel(doc, "Date and signature:", meta.get("Period (month/year):"));
+
+            // Signature fields - contractor
+            replaceInlineAfterLabel(doc, "Date and signature:", meta.get("Date and signature:"));
+            replaceInlineAfterLabel(doc, "Additional comments:", meta.get("Additional comments:"));
+            replaceInlineAfterLabel(doc, "Comments and signature", meta.get("Additional comments:"));
+
+            // Signature fields - contractee
+            replaceInlineAfterLabel(doc, "Official responsible for acceptance:", meta.get("Official responsible for acceptance:"));
+            replaceInlineAfterLabel(doc, "Date (acceptance):", meta.get("Date (acceptance):"));
 
             if (doc.getTables().isEmpty()) throw new IllegalStateException("No tables found in template.");
             XWPFTable t = doc.getTables().getFirst();

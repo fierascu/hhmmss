@@ -56,6 +56,12 @@ public class XlsService {
             meta.put("First Name of person:", findRightSideValue(sheet, "First Name of person:"));
             meta.put("Profile - Seniority level:", findRightSideValue(sheet, "Profile - Seniority level:"));
 
+            // Signature fields
+            meta.put("Date and signature:", findRightSideValue(sheet, "Date and signature:"));
+            meta.put("Additional comments:", findRightSideValue(sheet, "Additional comments:"));
+            meta.put("Official responsible for acceptance:", findRightSideValue(sheet, "Official responsible for acceptance:"));
+            meta.put("Date (acceptance):", findRightSideValue(sheet, "Date (acceptance):"));
+
             // Find header row where column B equals "Day"
             int headerRow = -1;
             for (Row r : sheet) {
