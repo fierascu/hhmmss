@@ -51,6 +51,9 @@ class UploadControllerTest {
     @MockBean
     private XlsService xlsService;
 
+    @MockBean
+    private BuildInfoService buildInfoService;
+
     @Test
     void testListUploadedFiles() throws Exception {
         when(uploadService.loadAll()).thenReturn(Stream.of(
