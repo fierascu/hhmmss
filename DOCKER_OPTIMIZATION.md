@@ -62,7 +62,40 @@ Already configured to exclude unnecessary files from build context:
 
 ## Security Enhancements
 
-### 1. Read-Only Root Filesystem
+### 1. Upload Storage Options
+
+The application needs writable storage for `/app/uploads`. You can choose between two options:
+
+**Option 1: Ephemeral tmpfs (Default, Recommended)**
+```yaml
+tmpfs:
+  - /app/uploads:noexec,nosuid,size=256m
+```
+
+**Benefits**:
+- More secure - files disappear on container restart
+- No persistence of potentially sensitive uploaded files
+- Aligns with automatic file cleanup feature
+- Prevents execution of uploaded files (`noexec`)
+
+**Use when**: Security is priority, files are truly temporary
+
+**Option 2: Persistent Volume**
+```yaml
+volumes:
+  - ./uploads:/app/uploads
+```
+
+**Benefits**:
+- Files persist across container restarts
+- Easier debugging (can inspect uploaded files on host)
+- Required if you need to retain uploads longer than container lifetime
+
+**Use when**: Debugging issues, need file persistence, development environment
+
+**Important**: Do NOT enable both options - they conflict and will prevent container startup.
+
+### 2. Read-Only Root Filesystem
 
 ```yaml
 read_only: true
@@ -77,10 +110,10 @@ tmpfs:
 - Forces explicit declaration of writable areas
 
 **Trade-offs**:
-- Requires tmpfs for temporary storage
+- Requires tmpfs or volumes for writable storage
 - May need adjustment if app writes to unexpected locations
 
-### 2. No New Privileges
+### 3. No New Privileges
 
 ```yaml
 security_opt:
@@ -89,7 +122,7 @@ security_opt:
 
 Prevents privilege escalation attacks within the container.
 
-### 3. Resource Limits
+### 4. Resource Limits
 
 ```yaml
 deploy:
@@ -107,7 +140,7 @@ deploy:
 - Ensures predictable performance
 - Better multi-tenancy on shared hosts
 
-### 4. Non-Root User
+### 5. Non-Root User
 
 Application runs as `spring:spring` user (already implemented), not root.
 
@@ -265,6 +298,16 @@ With optimized JVM settings:
 Using base image but it wasn't built. Either:
 1. Build the base image: `docker build -f Dockerfile.libreoffice-base -t hhmmss-libreoffice-base:latest .`
 2. Or use standard build: `docker build -t hhmmss:latest .` (without --build-arg)
+
+### Container fails to start with "duplicate mount destination" error
+
+You have both the persistent volume AND tmpfs enabled for `/app/uploads`. Docker rejects duplicate mount destinations.
+
+**Solution**: Choose ONE storage option:
+- For ephemeral storage (default, more secure): Keep tmpfs, comment out volumes section
+- For persistent storage (debugging): Uncomment volumes section, comment out `/app/uploads` in tmpfs
+
+See the "Upload Storage Options" section above for details.
 
 ### Container exits with "read-only filesystem" errors
 

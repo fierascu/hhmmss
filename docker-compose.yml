@@ -23,9 +23,15 @@ services:
       - JODCONVERTER_LOCAL_MAX_TASKS_PER_PROCESS=10
       # JVM settings (these override Dockerfile defaults if needed)
       # - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
-    volumes:
-      # Mount for uploaded files (optional, if you want persistence)
-      - ./uploads:/app/uploads
+    # Storage options for /app/uploads (choose ONE):
+    # Option 1: Persistent volume (uncomment for debugging/persistence)
+    # volumes:
+    #   - ./uploads:/app/uploads
+    # Option 2: Ephemeral tmpfs (default, better security, enabled below in tmpfs section)
+    #   - Files are lost on container restart
+    #   - More secure (no persistence)
+    #   - Aligns with automatic file cleanup
+
     # Resource limits for better container isolation
     deploy:
       resources:
@@ -38,10 +44,11 @@ services:
     # Security options
     security_opt:
       - no-new-privileges:true
-    # Read-only root filesystem (except for writable volumes)
+    # Read-only root filesystem (except for writable tmpfs mounts)
     read_only: true
     tmpfs:
       - /tmp:noexec,nosuid,size=128m
+      # Default ephemeral storage for uploads (comment out if using persistent volume above)
       - /app/uploads:noexec,nosuid,size=256m
     restart: unless-stopped
     healthcheck:
