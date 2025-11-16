@@ -4,6 +4,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -14,6 +15,17 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.*;
 
 class XlsServiceTest {
+
+    private XlsService xlsService;
+
+    @BeforeEach
+    void setUp() {
+        // Initialize XlsService with HolidayService containing 2025 and 2026 holidays
+        String holidays = "2025-01-01,2025-04-18,2025-04-21,2025-05-01,2025-12-25,2025-12-26," +
+                         "2026-01-01,2026-04-03,2026-04-06,2026-05-01,2026-12-25,2026-12-26";
+        HolidayService holidayService = new HolidayService(holidays);
+        xlsService = new XlsService(holidayService);
+    }
 
     @Test
     void testReadTimesheetWithValidFile() {
@@ -311,7 +323,7 @@ class XlsServiceTest {
         }
 
         // Update period to February 2024 (29 days - leap year)
-        XlsService.updatePeriod(testFile, "02/2024");
+        xlsService.updatePeriod(testFile, "02/2024");
 
         // Read back and verify
         try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
@@ -370,7 +382,7 @@ class XlsServiceTest {
         }
 
         // Update to April (30 days)
-        XlsService.updatePeriod(testFile, "04/2024");
+        xlsService.updatePeriod(testFile, "04/2024");
 
         // Verify day 31 is cleared
         try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
@@ -410,7 +422,7 @@ class XlsServiceTest {
         }
 
         // Update to February 2025 (28 days - non-leap year)
-        XlsService.updatePeriod(testFile, "02/2025");
+        xlsService.updatePeriod(testFile, "02/2025");
 
         // Verify days 29-31 are cleared
         try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
@@ -447,25 +459,25 @@ class XlsServiceTest {
         }
 
         // Should not throw, just log warning
-        assertDoesNotThrow(() -> XlsService.updatePeriod(testFile, "01/2024"));
+        assertDoesNotThrow(() -> xlsService.updatePeriod(testFile, "01/2025"));
     }
 
     @Test
     void testHighlightWeekendsAndHolidaysInFile(@TempDir Path tempDir) throws IOException, InvalidFormatException {
         Path testFile = tempDir.resolve("test-highlight.xlsx");
 
-        // Create test file for January 2024
+        // Create test file for January 2025
         try (Workbook wb = new XSSFWorkbook()) {
             Sheet sheet = wb.createSheet("Timesheet");
 
-            createMetaRow(sheet, 0, "Period (month/year):", "01/2024");
+            createMetaRow(sheet, 0, "Period (month/year):", "01/2025");
 
             Row headerRow = sheet.createRow(5);
             headerRow.createCell(1).setCellValue("Day");
             headerRow.createCell(2).setCellValue("Tasks");
             headerRow.createCell(3).setCellValue("Hours");
 
-            // Create data rows for January 2024 (31 days)
+            // Create data rows for January 2025 (31 days)
             for (int day = 1; day <= 31; day++) {
                 createDataRow(sheet, 5 + day, day, "Work", 8.0);
             }
@@ -476,32 +488,32 @@ class XlsServiceTest {
         }
 
         // Apply highlighting
-        XlsService.highlightWeekendsAndHolidaysInFile(testFile);
+        xlsService.highlightWeekendsAndHolidaysInFile(testFile);
 
         // Verify highlighting was applied
         try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
             Sheet sheet = wb.getSheet("Timesheet");
             assertNotNull(sheet);
 
-            // January 1, 2024 is Monday (New Year's Day - should be highlighted as holiday)
+            // January 1, 2025 is Wednesday (New Year's Day - should be highlighted as holiday)
             Row day1Row = sheet.getRow(6); // headerRow(5) + day(1)
             Cell day1Cell = day1Row.getCell(1);
             assertEquals(IndexedColors.YELLOW.getIndex(), day1Cell.getCellStyle().getFillForegroundColor());
 
-            // January 6, 2024 is Saturday (should be highlighted as weekend)
-            Row day6Row = sheet.getRow(11); // headerRow(5) + day(6)
-            Cell day6Cell = day6Row.getCell(1);
-            assertEquals(IndexedColors.YELLOW.getIndex(), day6Cell.getCellStyle().getFillForegroundColor());
+            // January 4, 2025 is Saturday (should be highlighted as weekend)
+            Row day4Row = sheet.getRow(9); // headerRow(5) + day(4)
+            Cell day4Cell = day4Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day4Cell.getCellStyle().getFillForegroundColor());
 
-            // January 7, 2024 is Sunday (should be highlighted as weekend)
-            Row day7Row = sheet.getRow(12); // headerRow(5) + day(7)
-            Cell day7Cell = day7Row.getCell(1);
-            assertEquals(IndexedColors.YELLOW.getIndex(), day7Cell.getCellStyle().getFillForegroundColor());
+            // January 5, 2025 is Sunday (should be highlighted as weekend)
+            Row day5Row = sheet.getRow(10); // headerRow(5) + day(5)
+            Cell day5Cell = day5Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day5Cell.getCellStyle().getFillForegroundColor());
 
-            // January 8, 2024 is Monday (regular weekday - should not be highlighted)
-            Row day8Row = sheet.getRow(13); // headerRow(5) + day(8)
-            Cell day8Cell = day8Row.getCell(1);
-            assertNotEquals(IndexedColors.YELLOW.getIndex(), day8Cell.getCellStyle().getFillForegroundColor());
+            // January 2, 2025 is Thursday (regular weekday - should not be highlighted)
+            Row day2Row = sheet.getRow(7); // headerRow(5) + day(2)
+            Cell day2Cell = day2Row.getCell(1);
+            assertNotEquals(IndexedColors.YELLOW.getIndex(), day2Cell.getCellStyle().getFillForegroundColor());
         }
     }
 
@@ -530,7 +542,7 @@ class XlsServiceTest {
         }
 
         // Apply highlighting
-        XlsService.highlightWeekendsAndHolidaysInFile(testFile);
+        xlsService.highlightWeekendsAndHolidaysInFile(testFile);
 
         // Verify highlighting
         try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
@@ -561,7 +573,7 @@ class XlsServiceTest {
         try (Workbook wb = new XSSFWorkbook()) {
             Sheet sheet = wb.createSheet("Timesheet");
 
-            createMetaRow(sheet, 0, "Period (month/year):", "12/2023");
+            createMetaRow(sheet, 0, "Period (month/year):", "12/2024");
 
             Row headerRow = sheet.createRow(5);
             headerRow.createCell(1).setCellValue("Day");
@@ -576,8 +588,8 @@ class XlsServiceTest {
             }
         }
 
-        // Update period to January 2024 (which should also apply highlighting)
-        XlsService.updatePeriod(testFile, "01/2024");
+        // Update period to January 2025 (which should also apply highlighting)
+        xlsService.updatePeriod(testFile, "01/2025");
 
         // Verify both period update and highlighting
         try (Workbook wb = new XSSFWorkbook(testFile.toFile())) {
@@ -585,17 +597,17 @@ class XlsServiceTest {
 
             // Verify period was updated
             Row periodRow = sheet.getRow(0);
-            assertEquals("01/2024", periodRow.getCell(2).getStringCellValue());
+            assertEquals("01/2025", periodRow.getCell(2).getStringCellValue());
 
-            // Verify January 1, 2024 (holiday) is highlighted
+            // Verify January 1, 2025 (holiday) is highlighted
             Row day1Row = sheet.getRow(6);
             Cell day1Cell = day1Row.getCell(1);
             assertEquals(IndexedColors.YELLOW.getIndex(), day1Cell.getCellStyle().getFillForegroundColor());
 
             // Verify a weekend is highlighted
-            Row day6Row = sheet.getRow(11); // January 6 is Saturday
-            Cell day6Cell = day6Row.getCell(1);
-            assertEquals(IndexedColors.YELLOW.getIndex(), day6Cell.getCellStyle().getFillForegroundColor());
+            Row day4Row = sheet.getRow(9); // January 4, 2025 is Saturday
+            Cell day4Cell = day4Row.getCell(1);
+            assertEquals(IndexedColors.YELLOW.getIndex(), day4Cell.getCellStyle().getFillForegroundColor());
         }
     }
 
