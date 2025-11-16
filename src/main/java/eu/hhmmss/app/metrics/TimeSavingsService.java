@@ -16,7 +16,7 @@ import java.util.Map;
 public class TimeSavingsService {
 
     // Estimated time to manually create a timesheet document (in minutes)
-    private static final double MANUAL_CREATION_TIME_MINUTES = 15.0;
+    private static final double MANUAL_CREATION_TIME_MINUTES = 5.0;
 
     // Estimated time to fill in each day's entry manually (in minutes)
     private static final double MANUAL_ENTRY_TIME_MINUTES = 0.5;
