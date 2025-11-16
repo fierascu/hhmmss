@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org"
+      th:replace="~{${theme == 'classic' ? 'layout-classic' : (theme == 'terminal' ? 'layout' : 'layout-ascii')} :: layout(title='Time Savings', content=~{::content})}">
+
+<th:block th:fragment="content">
+    <div th:if="${error}" class="alert alert-error" style="margin-bottom: 1rem;">
+        <strong>[ERROR]</strong>
+        <span th:text="${error}"></span>
+    </div>
+
+    <div th:unless="${error}">
+        <!-- Time Savings Metrics -->
+        <section style="margin-bottom: 2rem;">
+            <h2 style="margin-bottom: 1rem; border-bottom: 2px solid #444; padding-bottom: 0.5rem;">Time Savings Analysis</h2>
+
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(0, 100, 0, 0.1); border-left: 4px solid #4a9;">
+                <p style="margin: 0;">
+                    This tool automates the timesheet conversion process, eliminating manual document creation
+                    and data entry. Below are estimated time savings based on different usage scenarios.
+                </p>
+            </div>
+
+            <!-- One Conversion -->
+            <div th:if="${oneConversion != null}" class="savings-section">
+                <h3 style="margin-bottom: 0.75rem;">Per Conversion Savings</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div class="metric-card savings">
+                        <div class="metric-label">Manual Time</div>
+                        <div class="metric-value" th:text="${#numbers.formatDecimal(oneConversion.manualTimeMinutes, 1, 1)} + ' min'">0 min</div>
+                    </div>
+                    <div class="metric-card savings">
+                        <div class="metric-label">Automated Time</div>
+                        <div class="metric-value" th:text="${#numbers.formatDecimal(oneConversion.automatedTimeMinutes, 1, 2)} + ' min'">0 min</div>
+                    </div>
+                    <div class="metric-card savings highlight">
+                        <div class="metric-label">Time Saved</div>
+                        <div class="metric-value" th:text="${oneConversion.timeSavedFormatted}">0 min</div>
+                    </div>
+                    <div class="metric-card savings highlight">
+                        <div class="metric-label">Improvement</div>
+                        <div class="metric-value" th:text="${#numbers.formatDecimal(oneConversion.percentImprovement, 1, 1)} + '%'">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ten Conversions -->
+            <div th:if="${tenConversions != null}" class="savings-section">
+                <h3 style="margin-bottom: 0.75rem;">10 Conversions</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div class="metric-card savings">
+                        <div class="metric-label">Manual Time</div>
+                        <div class="metric-value" th:text="${#numbers.formatDecimal(tenConversions.manualTimeHours, 1, 1)} + ' hrs'">0 hrs</div>
+                    </div>
+                    <div class="metric-card savings">
+                        <div class="metric-label">Automated Time</div>
+                        <div class="metric-value" th:text="${#numbers.formatDecimal(tenConversions.automatedTimeMinutes, 1, 1)} + ' min'">0 min</div>
+                    </div>
+                    <div class="metric-card savings highlight">
+                        <div class="metric-label">Time Saved</div>
+                        <div class="metric-value" th:text="${tenConversions.timeSavedFormatted}">0 hrs</div>
+                    </div>
+                    <div class="metric-card savings highlight">
+                        <div class="metric-label">Improvement</div>
+                        <div class="metric-value" th:text="${#numbers.formatDecimal(tenConversions.percentImprovement, 1, 1)} + '%'">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hundred Conversions -->
+            <div th:if="${hundredConversions != null}" class="savings-section">
+                <h3 style="margin-bottom: 0.75rem;">100 Conversions (Annual Usage)</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div class="metric-card savings">
+                        <div class="metric-label">Manual Time</div>
+                        <div class="metric-value" th:text="${#numbers.formatDecimal(hundredConversions.manualTimeHours, 1, 1)} + ' hrs'">0 hrs</div>
+                    </div>
+                    <div class="metric-card savings">
+                        <div class="metric-label">Automated Time</div>
+                        <div class="metric-value" th:text="${#numbers.formatDecimal(hundredConversions.automatedTimeMinutes, 1, 1)} + ' min'">0 min</div>
+                    </div>
+                    <div class="metric-card savings highlight">
+                        <div class="metric-label">Time Saved</div>
+                        <div class="metric-value" th:text="${hundredConversions.timeSavedFormatted}">0 hrs</div>
+                    </div>
+                    <div class="metric-card savings highlight">
+                        <div class="metric-label">Improvement</div>
+                        <div class="metric-value" th:text="${#numbers.formatDecimal(hundredConversions.percentImprovement, 1, 1)} + '%'">0%</div>
+                    </div>
+                </div>
+                <div style="padding: 1rem; background: rgba(255, 165, 0, 0.1); border-left: 4px solid #fa0; margin-top: 1rem;">
+                    <strong>ROI Calculation:</strong><br/>
+                    Processing 100 timesheets per year saves approximately
+                    <strong th:text="${#numbers.formatDecimal(hundredConversions.timeSavedHours / 8, 1, 1)}">0</strong>
+                    working days of manual effort.
+                </div>
+            </div>
+        </section>
+
+        <!-- Back Link -->
+        <div style="margin-top: 2rem; text-align: center;">
+            <a th:href="${theme == 'classic' ? '/?theme=classic' : (theme == 'terminal' ? '/?theme=terminal' : '/')}"
+               style="color: #0af; text-decoration: none;">
+                ← Back to Upload
+            </a>
+        </div>
+    </div>
+
+    <style>
+        .metric-card {
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            border: 1px solid #444;
+        }
+
+        .metric-card.savings {
+            background: rgba(0, 50, 100, 0.2);
+        }
+
+        .metric-card.highlight {
+            background: rgba(0, 100, 0, 0.2);
+            border-color: #4a9;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #0af;
+        }
+
+        .metric-card.highlight .metric-value {
+            color: #5c5;
+        }
+
+        .savings-section {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+        }
+    </style>
+</th:block>
+
+</html>
