@@ -2,6 +2,7 @@ package eu.hhmmss.app.controller;
 
 import eu.hhmmss.app.metrics.TimeSavings;
 import eu.hhmmss.app.metrics.TimeSavingsService;
+import eu.hhmmss.app.uploadingfiles.storage.BuildInfoService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -22,6 +23,9 @@ class MetricsControllerTest {
     @MockBean
     private TimeSavingsService timeSavingsService;
 
+    @MockBean
+    private BuildInfoService buildInfoService;
+
     @Test
     void testShowMetrics_displaysMetricsPage() throws Exception {
         // Arrange
@@ -35,7 +39,8 @@ class MetricsControllerTest {
         when(timeSavingsService.calculateCumulativeSavings(anyInt())).thenReturn(savings);
 
         // Act & Assert
-        mockMvc.perform(get("/metrics"))
+        mockMvc.perform(get("/metrics")
+                        .sessionAttr("theme", "terminal"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("metrics"))
                 .andExpect(model().attributeExists("oneConversion"))
@@ -85,7 +90,8 @@ class MetricsControllerTest {
                 .thenThrow(new RuntimeException("Calculation error"));
 
         // Act & Assert
-        mockMvc.perform(get("/metrics"))
+        mockMvc.perform(get("/metrics")
+                        .sessionAttr("theme", "terminal"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("metrics"))
                 .andExpect(model().attributeExists("error"));

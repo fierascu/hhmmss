@@ -1,8 +1,8 @@
 package eu.hhmmss.app.metrics;
 
+import eu.hhmmss.app.converter.DayData;
 import eu.hhmmss.app.converter.HhmmssDto;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -41,17 +41,21 @@ public class TimeSavingsService {
         // Count number of days with entries
         int daysWithEntries = (int) timesheetData.getTasks().entrySet().stream()
                 .filter(entry -> {
-                    Pair<String, Double> taskData = entry.getValue();
-                    return taskData != null &&
-                            (taskData.getLeft() != null && !taskData.getLeft().trim().isEmpty() ||
-                                    taskData.getRight() != null && taskData.getRight() > 0);
+                    DayData dayData = entry.getValue();
+                    if (dayData == null) return false;
+
+                    // Check if there's a task or any hours recorded
+                    boolean hasTask = dayData.getTask() != null && !dayData.getTask().trim().isEmpty();
+                    boolean hasHours = getTotalHours(dayData) > 0;
+
+                    return hasTask || hasHours;
                 })
                 .count();
 
         // Calculate total hours worked
         double totalHours = timesheetData.getTasks().values().stream()
-                .filter(pair -> pair != null && pair.getRight() != null)
-                .mapToDouble(Pair::getRight)
+                .filter(dayData -> dayData != null)
+                .mapToDouble(this::getTotalHours)
                 .sum();
 
         // Calculate manual time required
@@ -107,5 +111,22 @@ public class TimeSavingsService {
                 .timeSavedMinutes(timeSavedMinutes)
                 .percentImprovement(percentImprovement)
                 .build();
+    }
+
+    /**
+     * Calculate total hours from a DayData object by summing all hour fields.
+     *
+     * @param dayData the day data
+     * @return total hours
+     */
+    private double getTotalHours(DayData dayData) {
+        if (dayData == null) return 0.0;
+
+        return dayData.getHoursFlexibilityPeriod() +
+                dayData.getHoursOutsideFlexibilityPeriod() +
+                dayData.getHoursSaturdays() +
+                dayData.getHoursSundaysHolidays() +
+                dayData.getHoursStandby() +
+                dayData.getHoursNonInvoiceable();
     }
 }

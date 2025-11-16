@@ -1,7 +1,7 @@
 package eu.hhmmss.app.metrics;
 
+import eu.hhmmss.app.converter.DayData;
 import eu.hhmmss.app.converter.HhmmssDto;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -23,11 +23,14 @@ class TimeSavingsServiceTest {
     void testCalculateTimeSavings_withValidTimesheet() {
         // Arrange
         HhmmssDto timesheet = new HhmmssDto();
-        Map<Integer, org.apache.commons.lang3.tuple.Pair<String, Double>> tasks = new HashMap<>();
+        Map<Integer, DayData> tasks = new HashMap<>();
 
         // Add 20 working days
         for (int i = 1; i <= 20; i++) {
-            tasks.put(i, new ImmutablePair<>("Work task", 8.0));
+            tasks.put(i, DayData.builder()
+                    .task("Work task")
+                    .hoursFlexibilityPeriod(8.0)
+                    .build());
         }
         timesheet.setTasks(tasks);
 
@@ -72,13 +75,13 @@ class TimeSavingsServiceTest {
     void testCalculateTimeSavings_withPartialEntries() {
         // Arrange
         HhmmssDto timesheet = new HhmmssDto();
-        Map<Integer, org.apache.commons.lang3.tuple.Pair<String, Double>> tasks = new HashMap<>();
+        Map<Integer, DayData> tasks = new HashMap<>();
 
         // Some days with tasks, some without
-        tasks.put(1, new ImmutablePair<>("Work", 8.0));
-        tasks.put(2, new ImmutablePair<>("", 0.0)); // Empty entry
-        tasks.put(3, new ImmutablePair<>("Work", 8.0));
-        tasks.put(4, new ImmutablePair<>(null, null)); // Null entry
+        tasks.put(1, DayData.builder().task("Work").hoursFlexibilityPeriod(8.0).build());
+        tasks.put(2, DayData.builder().task("").hoursFlexibilityPeriod(0.0).build()); // Empty entry
+        tasks.put(3, DayData.builder().task("Work").hoursFlexibilityPeriod(8.0).build());
+        tasks.put(4, DayData.builder().task(null).build()); // Null entry
 
         timesheet.setTasks(tasks);
 
@@ -130,8 +133,8 @@ class TimeSavingsServiceTest {
     void testTimeSavings_conversions() {
         // Arrange
         HhmmssDto timesheet = new HhmmssDto();
-        Map<Integer, org.apache.commons.lang3.tuple.Pair<String, Double>> tasks = new HashMap<>();
-        tasks.put(1, new ImmutablePair<>("Work", 8.0));
+        Map<Integer, DayData> tasks = new HashMap<>();
+        tasks.put(1, DayData.builder().task("Work").hoursFlexibilityPeriod(8.0).build());
         timesheet.setTasks(tasks);
 
         // Act

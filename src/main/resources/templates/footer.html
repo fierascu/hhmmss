@@ -4,18 +4,14 @@
 <th:block th:fragment="footer">
     <div class="footer">
         <h1> $> HH:MM:SS</h1>
-        <p>Timesheet Excel to DOCX and PDF Converter with ZIP batch processing.</p>
+        <p>Automate Your Excel Timesheet Conversions into DOCX & PDF Instantly and <a th:href="@{/metrics(theme=${theme})}">
+            Save 3 Hours Annually</a></p>
         <p style="margin-top: 1rem; font-size: 0.8rem; line-height: 1.5;">
             For security reasons, files are stored for no longer than one day and are automatically deleted.
             We never log personal information or the contents of input files.
             View the <a th:href="@{https://github.com/fierascu/hhmmss}"
                         target="_blank"
                         rel="noopener noreferrer">source code</a> to audit our security practices.
-        </p>
-        <p style="margin-top: 0.5rem; font-size: 0.8rem;">
-            <a th:href="@{/metrics(theme=${theme})}">
-                View Time Savings Analysis
-            </a>
         </p>
         <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border-secondary); font-size: 0.7rem; opacity: 0.8;">
             <span th:if="${buildInfo != null}">
