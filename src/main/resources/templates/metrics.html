@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org"
-      th:replace="~{${theme == 'classic' ? 'layout-classic' : (theme == 'terminal' ? 'layout' : 'layout-ascii')} :: layout(title='Project Metrics', content=~{::content})}">
+      th:replace="~{${theme == 'classic' ? 'layout-classic' : (theme == 'terminal' ? 'layout' : 'layout-ascii')} :: layout(title='Time Savings', content=~{::content})}">
 
 <th:block th:fragment="content">
     <div th:if="${error}" class="alert alert-error" style="margin-bottom: 1rem;">
@@ -9,85 +9,8 @@
     </div>
 
     <div th:unless="${error}">
-        <!-- Project Development Metrics -->
-        <section style="margin-bottom: 2rem;">
-            <h2 style="margin-bottom: 1rem; border-bottom: 2px solid #444; padding-bottom: 0.5rem;">
-                📊 Project Development Metrics
-            </h2>
-
-            <div th:if="${projectMetrics != null}">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                    <!-- Total Commits -->
-                    <div class="metric-card">
-                        <div class="metric-label">Total Commits</div>
-                        <div class="metric-value" th:text="${projectMetrics.totalCommits}">0</div>
-                    </div>
-
-                    <!-- Estimated Hours -->
-                    <div class="metric-card">
-                        <div class="metric-label">Estimated Hours Worked</div>
-                        <div class="metric-value" th:text="${#numbers.formatDecimal(projectMetrics.estimatedHours, 1, 1)}">0</div>
-                    </div>
-
-                    <!-- Estimated Days -->
-                    <div class="metric-card">
-                        <div class="metric-label">Estimated Days Worked</div>
-                        <div class="metric-value" th:text="${#numbers.formatDecimal(projectMetrics.estimatedDays, 1, 1)}">0</div>
-                    </div>
-
-                    <!-- Days Active -->
-                    <div class="metric-card">
-                        <div class="metric-label">Days Active (Calendar)</div>
-                        <div class="metric-value" th:text="${projectMetrics.daysActive}">0</div>
-                    </div>
-
-                    <!-- Unique Authors -->
-                    <div class="metric-card">
-                        <div class="metric-label">Contributors</div>
-                        <div class="metric-value" th:text="${projectMetrics.uniqueAuthors}">0</div>
-                    </div>
-
-                    <!-- Average Hours/Day -->
-                    <div class="metric-card">
-                        <div class="metric-label">Avg Hours/Calendar Day</div>
-                        <div class="metric-value" th:text="${#numbers.formatDecimal(projectMetrics.averageHoursPerDay, 1, 2)}">0</div>
-                    </div>
-                </div>
-
-                <!-- Date Range -->
-                <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(0, 0, 0, 0.2); border-radius: 4px;">
-                    <strong>Project Timeline:</strong><br/>
-                    First commit: <span th:text="${#temporals.format(projectMetrics.firstCommitDate, 'yyyy-MM-dd HH:mm')}"></span><br/>
-                    Last commit: <span th:text="${#temporals.format(projectMetrics.lastCommitDate, 'yyyy-MM-dd HH:mm')}"></span>
-                </div>
-
-                <!-- Author Statistics -->
-                <div th:if="${projectMetrics.authorStats != null and !projectMetrics.authorStats.isEmpty()}">
-                    <h3 style="margin-bottom: 0.75rem;">Contributions by Author</h3>
-                    <table style="width: 100%; border-collapse: collapse; font-family: monospace; margin-bottom: 1rem;">
-                        <thead>
-                        <tr style="background: rgba(0, 0, 0, 0.3); text-align: left;">
-                            <th style="padding: 0.5rem; border: 1px solid #444;">Author</th>
-                            <th style="padding: 0.5rem; border: 1px solid #444;">Commits</th>
-                            <th style="padding: 0.5rem; border: 1px solid #444;">Est. Hours</th>
-                            <th style="padding: 0.5rem; border: 1px solid #444;">Est. Days</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr th:each="entry : ${projectMetrics.authorStats}" style="border: 1px solid #444;">
-                            <td style="padding: 0.5rem; border: 1px solid #444;" th:text="${entry.value.author}"></td>
-                            <td style="padding: 0.5rem; border: 1px solid #444;" th:text="${entry.value.commits}"></td>
-                            <td style="padding: 0.5rem; border: 1px solid #444;" th:text="${#numbers.formatDecimal(entry.value.estimatedHours, 1, 1)}"></td>
-                            <td style="padding: 0.5rem; border: 1px solid #444;" th:text="${#numbers.formatDecimal(entry.value.estimatedDays, 1, 1)}"></td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
         <!-- Time Savings Metrics -->
-        <section style="margin-bottom: 2rem; padding-top: 2rem; border-top: 2px solid #444;">
+        <section style="margin-bottom: 2rem;">
             <h2 style="margin-bottom: 1rem; border-bottom: 2px solid #444; padding-bottom: 0.5rem;">
                 ⏱️ Time Savings Analysis
             </h2>
