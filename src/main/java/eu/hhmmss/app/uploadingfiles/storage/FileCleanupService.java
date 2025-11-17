@@ -1,8 +1,11 @@
 package eu.hhmmss.app.uploadingfiles.storage;
 
+import eu.hhmmss.app.converter.XlsService;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -10,8 +13,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
+import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.stream.Stream;
 
@@ -19,10 +24,15 @@ import java.util.stream.Stream;
 @Slf4j
 public class FileCleanupService {
 
+    private final XlsService xlsService;
     private Path uploadLocation;
 
     @Value("${cleanup.retention.days:7}")
     private int retentionDays;
+
+    public FileCleanupService(XlsService xlsService) {
+        this.xlsService = xlsService;
+    }
 
     @PostConstruct
     public void initialize() {
@@ -43,6 +53,66 @@ public class FileCleanupService {
     private boolean isGeneratedTemplate(Path file) {
         String filename = file.getFileName().toString();
         return filename.startsWith("timesheet-");
+    }
+
+    /**
+     * Pre-generates timesheet templates for the previous, current, and next month.
+     * This warms up the cache after cleanup to ensure fast response times for common requests.
+     * Templates are only generated if they don't already exist.
+     */
+    private void preGenerateTemplates() {
+        log.info("Starting template pre-generation for previous, current, and next month");
+
+        YearMonth now = YearMonth.now();
+        YearMonth[] monthsToGenerate = {
+                now.minusMonths(1),  // Previous month
+                now,                  // Current month
+                now.plusMonths(1)     // Next month
+        };
+
+        int generatedCount = 0;
+        int cachedCount = 0;
+        int errorCount = 0;
+
+        for (YearMonth month : monthsToGenerate) {
+            try {
+                String period = String.format("%d-%02d", month.getYear(), month.getMonthValue());
+                String formattedPeriod = String.format("%02d/%d", month.getMonthValue(), month.getYear());
+                String filename = "timesheet-" + period + ".xlsx";
+                Path templatePath = uploadLocation.resolve(filename);
+
+                // Check if template already exists
+                if (Files.exists(templatePath)) {
+                    log.debug("Template already exists, skipping: {}", filename);
+                    cachedCount++;
+                    continue;
+                }
+
+                // Ensure upload directory exists
+                if (!Files.exists(uploadLocation)) {
+                    Files.createDirectories(uploadLocation);
+                }
+
+                // Load the static Excel template from classpath
+                Resource excelTemplateResource = new ClassPathResource("timesheet-template.xlsx");
+
+                // Copy template to the new file
+                Files.copy(excelTemplateResource.getInputStream(), templatePath, StandardCopyOption.REPLACE_EXISTING);
+
+                // Update period in the Excel file (adjusts days and highlights weekends/holidays)
+                xlsService.updatePeriod(templatePath, formattedPeriod);
+
+                log.info("Pre-generated template: {} ({})", filename, formattedPeriod);
+                generatedCount++;
+
+            } catch (IOException e) {
+                errorCount++;
+                log.error("Failed to pre-generate template for month {}: {}", month, e.getMessage(), e);
+            }
+        }
+
+        log.info("Template pre-generation completed. Generated: {}, Already cached: {}, Errors: {}",
+                generatedCount, cachedCount, errorCount);
     }
 
     /**
@@ -109,6 +179,9 @@ public class FileCleanupService {
         } else {
             log.info("Cleanup completed. No files to delete.");
         }
+
+        // Pre-generate templates for common months after cleanup
+        preGenerateTemplates();
     }
 
     /**
