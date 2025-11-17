@@ -70,7 +70,7 @@ public class UploadController {
         model.addAttribute("files", uploadService.loadAll()
                 .map(path -> MvcUriComponentsBuilder.fromMethodName(
                                 UploadController.class, "serveFile",
-                                path.getFileName().toString())
+                                path.getFileName().toString(), (HttpSession) null)
                         .build().toUri().toString())
                 .toList());
 
@@ -222,13 +222,13 @@ public class UploadController {
         // Build file URLs for download links
         java.util.List<String> generatedFileUrls = new java.util.ArrayList<>();
         generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
-                UploadController.class, "serveFile", uuidFilename).build().toUri().toString());
+                UploadController.class, "serveFile", uuidFilename, (HttpSession) null).build().toUri().toString());
         generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
-                UploadController.class, "serveFile", extractedFilename).build().toUri().toString());
+                UploadController.class, "serveFile", extractedFilename, (HttpSession) null).build().toUri().toString());
         generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
-                UploadController.class, "serveFile", xlsPdfFilename).build().toUri().toString());
+                UploadController.class, "serveFile", xlsPdfFilename, (HttpSession) null).build().toUri().toString());
         generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
-                UploadController.class, "serveFile", docPdfFilename).build().toUri().toString());
+                UploadController.class, "serveFile", docPdfFilename, (HttpSession) null).build().toUri().toString());
 
         // Pass data to the view
         redirectAttributes.addFlashAttribute("originalFilename", originalFilename);
@@ -288,9 +288,9 @@ public class UploadController {
         // Build file URLs for download links
         java.util.List<String> generatedFileUrls = new java.util.ArrayList<>();
         generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
-                UploadController.class, "serveFile", uuidFilename).build().toUri().toString());
+                UploadController.class, "serveFile", uuidFilename, (HttpSession) null).build().toUri().toString());
         generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
-                UploadController.class, "serveFile", result.resultZipFileName()).build().toUri().toString());
+                UploadController.class, "serveFile", result.resultZipFileName(), (HttpSession) null).build().toUri().toString());
 
         // Pass results to the view
         redirectAttributes.addFlashAttribute("originalFilename", originalFilename);
@@ -407,7 +407,7 @@ public class UploadController {
             // Build file URLs for download links
             java.util.List<String> generatedFileUrls = new java.util.ArrayList<>();
             generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
-                    UploadController.class, "serveFile", filename).build().toUri().toString());
+                    UploadController.class, "serveFile", filename, (HttpSession) null).build().toUri().toString());
 
             // Pass data to the view
             redirectAttributes.addFlashAttribute("generatedFiles", generatedFiles);

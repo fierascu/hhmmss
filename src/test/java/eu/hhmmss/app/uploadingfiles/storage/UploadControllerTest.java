@@ -54,6 +54,9 @@ class UploadControllerTest {
     @MockBean
     private BuildInfoService buildInfoService;
 
+    @MockBean
+    private FileOwnershipService fileOwnershipService;
+
     @Test
     void testListUploadedFiles() throws Exception {
         when(uploadService.loadAll()).thenReturn(Stream.of(
@@ -97,7 +100,7 @@ class UploadControllerTest {
                 xlsxContent
         );
 
-        when(uploadService.store(any())).thenReturn("uuid-12345.xlsx");
+        when(uploadService.store(any(), anyString())).thenReturn("uuid-12345.xlsx");
         // Return a non-existent path - XlsService will catch the error and return empty DTO
         when(uploadService.load("uuid-12345.xlsx")).thenReturn(Paths.get("/tmp/nonexistent-uuid-12345.xlsx"));
         when(uploadService.load(argThat(filename ->
@@ -106,6 +109,9 @@ class UploadControllerTest {
                     String filename = invocation.getArgument(0);
                     return Paths.get("/tmp/uploads/" + filename);
                 });
+
+        // Mock file ownership tracking
+        doNothing().when(uploadService).trackGeneratedFile(anyString(), anyString(), anyString());
 
         // Mock PDF service
         doNothing().when(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
@@ -119,7 +125,7 @@ class UploadControllerTest {
                 .andExpect(flash().attributeExists("successMessage"))
                 .andExpect(flash().attribute("successMessage", "File processed successfully! Extracted 0 tasks and generated PDFs."));
 
-        verify(uploadService).store(file);
+        verify(uploadService).store(any(), anyString());
     }
 
     @Test
@@ -135,7 +141,7 @@ class UploadControllerTest {
                 xlsxContent
         );
 
-        when(uploadService.store(any())).thenReturn("uuid-12345.xlsx");
+        when(uploadService.store(any(), anyString())).thenReturn("uuid-12345.xlsx");
         when(uploadService.load("uuid-12345.xlsx")).thenReturn(testXlsPath);
         when(uploadService.load("uuid-12345.xlsx.docx"))
                 .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.docx"));
@@ -143,6 +149,9 @@ class UploadControllerTest {
                 .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.pdf"));
         when(uploadService.load("uuid-12345.xlsx.docx.pdf"))
                 .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.docx.pdf"));
+
+        // Mock file ownership tracking
+        doNothing().when(uploadService).trackGeneratedFile(anyString(), anyString(), anyString());
 
         // Mock PDF service
         doNothing().when(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
@@ -163,7 +172,7 @@ class UploadControllerTest {
                 .andExpect(flash().attribute("originalFilename", "timesheet-in.xlsx"))
                 .andExpect(flash().attribute("isZipResult", false));
 
-        verify(uploadService).store(file);
+        verify(uploadService).store(any(), anyString());
         verify(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
         verify(pdfService).convertDocToPdf(any(Path.class), any(Path.class));
     }
@@ -178,7 +187,7 @@ class UploadControllerTest {
                 invalidContent
         );
 
-        when(uploadService.store(any())).thenThrow(new StorageException("Invalid file format"));
+        when(uploadService.store(any(), anyString())).thenThrow(new StorageException("Invalid file format"));
 
         mockMvc.perform(multipart("/")
                         .file(file))
@@ -187,7 +196,7 @@ class UploadControllerTest {
                 .andExpect(flash().attributeExists("errorMessage"))
                 .andExpect(flash().attribute("errorMessage", "Invalid file format"));
 
-        verify(uploadService).store(file);
+        verify(uploadService).store(any(), anyString());
     }
 
     @Test
@@ -199,7 +208,7 @@ class UploadControllerTest {
                 new byte[]{0x50, 0x4B}
         );
 
-        when(uploadService.store(any())).thenThrow(new RuntimeException("Unexpected error"));
+        when(uploadService.store(any(), anyString())).thenThrow(new RuntimeException("Unexpected error"));
 
         mockMvc.perform(multipart("/")
                         .file(file))
@@ -208,7 +217,7 @@ class UploadControllerTest {
                 .andExpect(flash().attributeExists("errorMessage"))
                 .andExpect(flash().attribute("errorMessage", containsString("An unexpected error occurred")));
 
-        verify(uploadService).store(file);
+        verify(uploadService).store(any(), anyString());
     }
 
     @Test
@@ -222,6 +231,7 @@ class UploadControllerTest {
         };
 
         when(uploadService.loadAsResource("test.xlsx")).thenReturn(resource);
+        when(fileOwnershipService.verifyOwnership(any(), eq("test.xlsx"))).thenReturn(true);
 
         mockMvc.perform(get("/files/test.xlsx"))
                 .andExpect(status().isOk())
@@ -229,26 +239,31 @@ class UploadControllerTest {
                 .andExpect(content().bytes(content));
 
         verify(uploadService).loadAsResource("test.xlsx");
+        verify(fileOwnershipService).verifyOwnership(any(), eq("test.xlsx"));
     }
 
     @Test
     void testServeFileNotFound() throws Exception {
         when(uploadService.loadAsResource("nonexistent.xlsx"))
                 .thenThrow(new StorageFileNotFoundException("File not found"));
+        when(fileOwnershipService.verifyOwnership(any(), eq("nonexistent.xlsx"))).thenReturn(true);
 
         mockMvc.perform(get("/files/nonexistent.xlsx"))
                 .andExpect(status().isNotFound());
 
+        verify(fileOwnershipService).verifyOwnership(any(), eq("nonexistent.xlsx"));
         verify(uploadService).loadAsResource("nonexistent.xlsx");
     }
 
     @Test
     void testServeFileReturnsNullResource() throws Exception {
         when(uploadService.loadAsResource(anyString())).thenReturn(null);
+        when(fileOwnershipService.verifyOwnership(any(), eq("test.xlsx"))).thenReturn(true);
 
         mockMvc.perform(get("/files/test.xlsx"))
                 .andExpect(status().isNotFound());
 
+        verify(fileOwnershipService).verifyOwnership(any(), eq("test.xlsx"));
         verify(uploadService).loadAsResource("test.xlsx");
     }
 
@@ -264,12 +279,29 @@ class UploadControllerTest {
         };
 
         when(uploadService.loadAsResource(filename)).thenReturn(resource);
+        when(fileOwnershipService.verifyOwnership(any(), eq(filename))).thenReturn(true);
 
         mockMvc.perform(get("/files/" + filename))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"" + filename + "\""));
 
         verify(uploadService).loadAsResource(filename);
+        verify(fileOwnershipService).verifyOwnership(any(), eq(filename));
+    }
+
+    @Test
+    void testServeFileUnauthorizedAccess() throws Exception {
+        String filename = "unauthorized.xlsx";
+
+        // Mock ownership verification to return false (unauthorized)
+        when(fileOwnershipService.verifyOwnership(any(), eq(filename))).thenReturn(false);
+
+        mockMvc.perform(get("/files/" + filename))
+                .andExpect(status().isForbidden());
+
+        // Verify ownership was checked but file was never loaded
+        verify(fileOwnershipService).verifyOwnership(any(), eq(filename));
+        verify(uploadService, never()).loadAsResource(anyString());
     }
 
     @Test
@@ -285,12 +317,15 @@ class UploadControllerTest {
                 xlsxContent
         );
 
-        when(uploadService.store(any())).thenReturn("uuid-12345.xlsx");
+        when(uploadService.store(any(), anyString())).thenReturn("uuid-12345.xlsx");
         when(uploadService.load("uuid-12345.xlsx")).thenReturn(testXlsPath);
         when(uploadService.load("uuid-12345.xlsx.docx"))
                 .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.docx"));
         when(uploadService.load("uuid-12345.xlsx.pdf"))
                 .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.pdf"));
+
+        // Mock file ownership tracking
+        doNothing().when(uploadService).trackGeneratedFile(anyString(), anyString(), anyString());
 
         // Mock PDF service to throw exception
         doThrow(new RuntimeException("PDF conversion failed")).when(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
@@ -303,7 +338,7 @@ class UploadControllerTest {
                 .andExpect(flash().attributeExists("errorMessage"))
                 .andExpect(flash().attribute("errorMessage", containsString("An unexpected error occurred")));
 
-        verify(uploadService).store(file);
+        verify(uploadService).store(any(), anyString());
         verify(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
     }
 
@@ -320,7 +355,7 @@ class UploadControllerTest {
                 xlsxContent
         );
 
-        when(uploadService.store(any())).thenReturn("uuid-12345.xlsx");
+        when(uploadService.store(any(), anyString())).thenReturn("uuid-12345.xlsx");
         when(uploadService.load("uuid-12345.xlsx")).thenReturn(testXlsPath);
         when(uploadService.load("uuid-12345.xlsx.docx"))
                 .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.docx"));
@@ -328,6 +363,9 @@ class UploadControllerTest {
                 .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.pdf"));
         when(uploadService.load("uuid-12345.xlsx.docx.pdf"))
                 .thenReturn(Paths.get("/tmp/uploads/uuid-12345.xlsx.docx.pdf"));
+
+        // Mock file ownership tracking
+        doNothing().when(uploadService).trackGeneratedFile(anyString(), anyString(), anyString());
 
         // Mock PDF service - XLS to PDF succeeds, DOC to PDF fails
         doNothing().when(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
@@ -341,7 +379,7 @@ class UploadControllerTest {
                 .andExpect(flash().attributeExists("errorMessage"))
                 .andExpect(flash().attribute("errorMessage", containsString("An unexpected error occurred")));
 
-        verify(uploadService).store(file);
+        verify(uploadService).store(any(), anyString());
         verify(pdfService).convertXlsToPdf(any(Path.class), any(Path.class));
         verify(pdfService).convertDocToPdf(any(Path.class), any(Path.class));
     }
@@ -367,7 +405,7 @@ class UploadControllerTest {
                 .andExpect(flash().attribute("errorMessage", containsString("exceeds the maximum limit of 128 KB")));
 
         // Store should never be called because validation fails first
-        verify(uploadService, never()).store(any());
+        verify(uploadService, never()).store(any(), anyString());
     }
 
     @Test
@@ -391,7 +429,7 @@ class UploadControllerTest {
                 .andExpect(flash().attribute("errorMessage", containsString("exceeds the maximum limit of 2.00 MB")));
 
         // Store should never be called because validation fails first
-        verify(uploadService, never()).store(any());
+        verify(uploadService, never()).store(any(), anyString());
     }
 
     @Test
@@ -405,7 +443,7 @@ class UploadControllerTest {
                 validContent
         );
 
-        when(uploadService.store(any())).thenReturn("uuid-12345.xlsx");
+        when(uploadService.store(any(), anyString())).thenReturn("uuid-12345.xlsx");
         when(uploadService.load("uuid-12345.xlsx")).thenReturn(Paths.get("/tmp/test.xlsx"));
 
         // File should pass size validation
@@ -413,7 +451,7 @@ class UploadControllerTest {
                         .file(file))
                 .andExpect(status().is3xxRedirection());
 
-        verify(uploadService).store(file);
+        verify(uploadService).store(any(), anyString());
     }
 
     @Test
@@ -427,7 +465,7 @@ class UploadControllerTest {
                 validContent
         );
 
-        when(uploadService.store(any())).thenReturn("uuid-12345.zip");
+        when(uploadService.store(any(), anyString())).thenReturn("uuid-12345.zip");
         when(uploadService.load("uuid-12345.zip")).thenReturn(Paths.get("/tmp/test.zip"));
 
         // File should pass size validation
@@ -435,7 +473,7 @@ class UploadControllerTest {
                         .file(file))
                 .andExpect(status().is3xxRedirection());
 
-        verify(uploadService).store(file);
+        verify(uploadService).store(any(), anyString());
     }
 
     @Test
@@ -449,7 +487,7 @@ class UploadControllerTest {
                 content
         );
 
-        when(uploadService.store(any())).thenReturn("uuid-12345.xlsx");
+        when(uploadService.store(any(), anyString())).thenReturn("uuid-12345.xlsx");
         when(uploadService.load("uuid-12345.xlsx")).thenReturn(Paths.get("/tmp/test.xlsx"));
 
         mockMvc.perform(multipart("/")
@@ -472,7 +510,7 @@ class UploadControllerTest {
         );
 
         // Make store throw an exception
-        when(uploadService.store(any())).thenThrow(new StorageException("Storage error"));
+        when(uploadService.store(any(), anyString())).thenThrow(new StorageException("Storage error"));
 
         mockMvc.perform(multipart("/")
                         .file(file))
@@ -505,7 +543,7 @@ class UploadControllerTest {
 
         // Verify acquirePermit was called but store was never called
         verify(throttlingService, times(1)).acquirePermit();
-        verify(uploadService, never()).store(any());
+        verify(uploadService, never()).store(any(), anyString());
         // releasePermit should not be called when acquirePermit throws
         verify(throttlingService, never()).releasePermit();
     }
@@ -517,6 +555,7 @@ class UploadControllerTest {
         Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
 
         when(uploadService.load("timesheet-2024-11.xlsx")).thenReturn(testExistingPath);
+        doNothing().when(fileOwnershipService).trackFile(anyString(), anyString());
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate")
                         .param("period", period))
@@ -540,6 +579,7 @@ class UploadControllerTest {
         Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
 
         when(uploadService.load(expectedFilename)).thenReturn(testExistingPath);
+        doNothing().when(fileOwnershipService).trackFile(anyString(), anyString());
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate"))
                 .andExpect(status().is3xxRedirection())
@@ -560,6 +600,7 @@ class UploadControllerTest {
         Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
 
         when(uploadService.load(expectedFilename)).thenReturn(testExistingPath);
+        doNothing().when(fileOwnershipService).trackFile(anyString(), anyString());
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate")
                         .param("period", ""))
@@ -578,6 +619,7 @@ class UploadControllerTest {
         Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
 
         when(uploadService.load("timesheet-2024-11.xlsx")).thenReturn(testExistingPath);
+        doNothing().when(fileOwnershipService).trackFile(anyString(), anyString());
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate")
                         .param("period", period)
@@ -596,6 +638,7 @@ class UploadControllerTest {
 
         // Return a path that actually exists to simulate cache hit
         when(uploadService.load("timesheet-2024-11.xlsx")).thenReturn(testExistingPath);
+        doNothing().when(fileOwnershipService).trackFile(anyString(), anyString());
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate")
                         .param("period", period))
