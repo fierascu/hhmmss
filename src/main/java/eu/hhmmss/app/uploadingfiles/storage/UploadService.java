@@ -29,9 +29,11 @@ public class UploadService {
 
     private Path rootLocation;
     private final FileCleanupService fileCleanupService;
+    private final FileOwnershipService fileOwnershipService;
 
-    public UploadService(FileCleanupService fileCleanupService) {
+    public UploadService(FileCleanupService fileCleanupService, FileOwnershipService fileOwnershipService) {
         this.fileCleanupService = fileCleanupService;
+        this.fileOwnershipService = fileOwnershipService;
     }
 
     @PostConstruct
@@ -55,10 +57,22 @@ public class UploadService {
         }
     }
 
-    public String store(MultipartFile file) {
+    /**
+     * Stores an uploaded file with session-based ownership tracking.
+     * Implements security recommendations from IDOR vulnerability audit.
+     *
+     * @param file the uploaded file
+     * @param sessionId the HTTP session ID for ownership tracking
+     * @return the secure filename with session ID prefix
+     */
+    public String store(MultipartFile file, String sessionId) {
         try {
             if (file.isEmpty()) {
                 throw new StorageException("Failed to store empty file.");
+            }
+
+            if (sessionId == null || sessionId.trim().isEmpty()) {
+                throw new StorageException("Session ID is required for file upload.");
             }
 
             String originalFilename = Objects.requireNonNull(file.getOriginalFilename());
@@ -82,16 +96,14 @@ public class UploadService {
             // Generate secure random UUID to prevent filename enumeration attacks
             UUID secureRandomUuid = TimeBasedUuidGenerator.generate();
 
-            // Extract original file extension
-            String fileExtension = "";
-            int lastDotIndex = originalFilename.lastIndexOf('.');
-            if (lastDotIndex > 0) {
-                fileExtension = originalFilename.substring(lastDotIndex);
-            }
+            // Extract and sanitize original file extension to prevent path traversal
+            String fileExtension = extractSafeExtension(originalFilename);
 
-            // Build filename: UUID-hash-originalExtension
-            // Example: 550e8400-e29b-41d4-a716-446655440000-a1b2c3d4e5f67890.xlsx
-            String secureFilename = secureRandomUuid + "-" + fileHash + fileExtension;
+            // Build filename with session ID prefix: sessionID_UUID-hash-originalExtension
+            // Example: ABC123DEF456_550e8400-e29b-41d4-a716-446655440000-a1b2c3d4e5f67890.xlsx
+            // This prevents IDOR attacks by making filenames session-specific
+            String sessionPrefix = sanitizeSessionId(sessionId);
+            String secureFilename = sessionPrefix + "_" + secureRandomUuid + "-" + fileHash + fileExtension;
 
             Path destinationFile = this.rootLocation.resolve(Paths.get(secureFilename))
                     .normalize().toAbsolutePath();
@@ -102,13 +114,89 @@ public class UploadService {
 
             // Write file content to destination
             Files.write(destinationFile, fileContent);
-            log.info("File '{}' uploaded successfully as: {} (UUID: {}, Hash: {})",
-                    originalFilename, secureFilename, secureRandomUuid, fileHash);
+
+            // Track file ownership for this session
+            fileOwnershipService.trackFile(sessionId, secureFilename);
+
+            log.info("File '{}' uploaded successfully as: {} (UUID: {}, Hash: {}, Session: {}...)",
+                    originalFilename, secureFilename, secureRandomUuid, fileHash,
+                    sessionId.substring(0, Math.min(8, sessionId.length())));
 
             return secureFilename;
         } catch (IOException e) {
             throw new StorageException("Failed to store file.", e);
         }
+    }
+
+    /**
+     * Sanitizes session ID for use in filename by taking first 12 alphanumeric characters.
+     * Prevents path traversal and special character issues in filenames.
+     *
+     * @param sessionId the session ID to sanitize
+     * @return sanitized session ID prefix
+     */
+    private String sanitizeSessionId(String sessionId) {
+        if (sessionId == null) {
+            return "UNKNOWN";
+        }
+        // Take first 12 characters and remove any non-alphanumeric characters
+        String cleaned = sessionId.replaceAll("[^a-zA-Z0-9]", "");
+        return cleaned.substring(0, Math.min(12, cleaned.length()));
+    }
+
+    /**
+     * Extracts and sanitizes file extension from filename to prevent path traversal attacks.
+     * Only allows safe characters (alphanumeric, dot, hyphen) and removes any path separators.
+     *
+     * Security: Prevents attackers from using malicious filenames like "test.xlsx/../../../etc/passwd"
+     * to traverse outside the upload directory.
+     *
+     * @param filename the original filename
+     * @return sanitized file extension (e.g., ".xlsx", ".xls") or empty string if invalid
+     */
+    private String extractSafeExtension(String filename) {
+        if (filename == null || filename.isEmpty()) {
+            return "";
+        }
+
+        // Find the last dot in the filename
+        int lastDotIndex = filename.lastIndexOf('.');
+        if (lastDotIndex <= 0 || lastDotIndex == filename.length() - 1) {
+            return ""; // No extension or dot at the beginning/end
+        }
+
+        // Extract the part after the last dot
+        String extension = filename.substring(lastDotIndex);
+
+        // Security: Remove any path separators or special characters that could enable path traversal
+        // Only allow: dot, alphanumeric characters, and hyphen (for extensions like .xlsm)
+        extension = extension.replaceAll("[^.a-zA-Z0-9-]", "");
+
+        // Additional security: Ensure extension doesn't contain multiple dots or start with anything but a dot
+        if (!extension.startsWith(".") || extension.indexOf('.', 1) != -1) {
+            return "";
+        }
+
+        // Validate it's a reasonable length (most extensions are 2-5 chars)
+        if (extension.length() > 10) {
+            return "";
+        }
+
+        return extension.toLowerCase(); // Normalize to lowercase
+    }
+
+    /**
+     * Tracks ownership for a generated file (DOCX, PDF, etc.) based on source file.
+     * Derived files inherit the session ownership of their source file.
+     *
+     * @param sourceFilename the original filename that was processed
+     * @param generatedFilename the new filename that was generated
+     * @param sessionId the session ID that owns both files
+     */
+    public void trackGeneratedFile(String sourceFilename, String generatedFilename, String sessionId) {
+        fileOwnershipService.trackFile(sessionId, generatedFilename);
+        log.debug("Tracked generated file '{}' from source '{}' for session {}...",
+                generatedFilename, sourceFilename, sessionId.substring(0, Math.min(8, sessionId.length())));
     }
 
     public Stream<Path> loadAll() {
@@ -122,7 +210,16 @@ public class UploadService {
     }
 
     public Path load(String filename) {
-        return rootLocation.resolve(filename);
+        // Validate the filename: disallow "..", "/", "\\" to avoid path traversal
+        if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
+            throw new StorageFileNotFoundException("Invalid filename: contains parent directory or path separator.");
+        }
+        Path resolvedPath = rootLocation.resolve(filename).normalize().toAbsolutePath();
+        Path rootAbs = rootLocation.toAbsolutePath().normalize();
+        if (!resolvedPath.startsWith(rootAbs)) {
+            throw new StorageFileNotFoundException("Invalid filename: escapes storage directory.");
+        }
+        return resolvedPath;
     }
 
     public Resource loadAsResource(String filename) {

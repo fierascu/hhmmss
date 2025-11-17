@@ -25,13 +25,16 @@ class UploadServiceTest {
     private UploadService uploadService;
     private Path testRootLocation;
     private FileCleanupService mockFileCleanupService;
+    private FileOwnershipService mockFileOwnershipService;
+    private static final String TEST_SESSION_ID = "test-session-id";
 
     @BeforeEach
     void setUp() throws IOException {
-        // Create a mock FileCleanupService
+        // Create mocks
         mockFileCleanupService = mock(FileCleanupService.class);
+        mockFileOwnershipService = mock(FileOwnershipService.class);
 
-        uploadService = new UploadService(mockFileCleanupService);
+        uploadService = new UploadService(mockFileCleanupService, mockFileOwnershipService);
         uploadService.initialize();
 
         // Get the actual root location used by the service
@@ -72,7 +75,7 @@ class UploadServiceTest {
                 xlsxContent
         );
 
-        String storedFilename = uploadService.store(file);
+        String storedFilename = uploadService.store(file, TEST_SESSION_ID);
 
         assertNotNull(storedFilename);
         assertTrue(storedFilename.endsWith(".xlsx"));
@@ -90,7 +93,7 @@ class UploadServiceTest {
                 xlsContent
         );
 
-        String storedFilename = uploadService.store(file);
+        String storedFilename = uploadService.store(file, TEST_SESSION_ID);
 
         assertNotNull(storedFilename);
         assertTrue(storedFilename.endsWith(".xls"));
@@ -107,7 +110,7 @@ class UploadServiceTest {
         );
 
         StorageException exception = assertThrows(StorageException.class,
-                () -> uploadService.store(file));
+                () -> uploadService.store(file, TEST_SESSION_ID));
 
         assertEquals("Failed to store empty file.", exception.getMessage());
     }
@@ -124,7 +127,7 @@ class UploadServiceTest {
         );
 
         StorageException exception = assertThrows(StorageException.class,
-                () -> uploadService.store(file));
+                () -> uploadService.store(file, TEST_SESSION_ID));
 
         assertTrue(exception.getMessage().contains("not a valid ZIP file"));
     }
@@ -141,7 +144,7 @@ class UploadServiceTest {
         );
 
         StorageException exception = assertThrows(StorageException.class,
-                () -> uploadService.store(file));
+                () -> uploadService.store(file, TEST_SESSION_ID));
 
         assertTrue(exception.getMessage().contains("Windows executable"));
     }
@@ -159,13 +162,96 @@ class UploadServiceTest {
                 xlsxContent
         );
 
-        String storedFilename = uploadService.store(file);
+        String storedFilename = uploadService.store(file, TEST_SESSION_ID);
 
         // The stored filename should be a UUID, not the malicious path
         assertNotNull(storedFilename);
         assertFalse(storedFilename.contains(".."));
         assertFalse(storedFilename.contains("/"));
         assertTrue(storedFilename.endsWith(".xlsx"));
+    }
+
+    @Test
+    void testStoreFileWithPathTraversalInExtension() {
+        byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+
+        // Malicious filename with path traversal in extension
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.xlsx/../../../etc/passwd",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        // The extension will be sanitized to empty or invalid, causing validation to fail
+        StorageException exception = assertThrows(StorageException.class,
+                () -> uploadService.store(file, TEST_SESSION_ID));
+
+        assertTrue(exception.getMessage().contains("Excel or ZIP extension"),
+                "Should reject file with malicious extension");
+    }
+
+    @Test
+    void testStoreFileWithNullByteInFilename() {
+        byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+
+        // Malicious filename with null byte (could bypass extension checks in some systems)
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.xlsx\0.txt",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        // The extension will be sanitized, removing the null byte and .txt, leaving .xlsx
+        // However, the null byte in the filename will be stripped by extractSafeExtension
+        // The sanitized extension will be ".txt" (after the null byte) which is invalid
+        StorageException exception = assertThrows(StorageException.class,
+                () -> uploadService.store(file, TEST_SESSION_ID));
+
+        assertTrue(exception.getMessage().contains("Excel or ZIP extension"),
+                "Should reject file with null byte in extension");
+    }
+
+    @Test
+    void testStoreFileWithAbsolutePath() {
+        byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+
+        // Malicious filename with absolute path
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "/etc/passwd.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        String storedFilename = uploadService.store(file, TEST_SESSION_ID);
+
+        // The stored filename should not contain absolute path
+        assertNotNull(storedFilename);
+        assertFalse(storedFilename.startsWith("/"), "Filename should not start with '/'");
+        assertFalse(storedFilename.contains("/etc/"), "Filename should not contain '/etc/'");
+    }
+
+    @Test
+    void testStoreFileWithWindowsPathTraversal() {
+        byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+
+        // Malicious filename with Windows path traversal
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "..\\..\\..\\windows\\system32\\config.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        String storedFilename = uploadService.store(file, TEST_SESSION_ID);
+
+        // The stored filename should not contain backslashes or path traversal
+        assertNotNull(storedFilename);
+        assertFalse(storedFilename.contains(".."), "Filename should not contain '..'");
+        assertFalse(storedFilename.contains("\\"), "Filename should not contain backslashes");
+        assertFalse(storedFilename.contains("windows"), "Filename should not contain 'windows'");
     }
 
     @Test
@@ -178,7 +264,7 @@ class UploadServiceTest {
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 xlsxContent
         );
-        String storedFilename = uploadService.store(file);
+        String storedFilename = uploadService.store(file, TEST_SESSION_ID);
 
         Path loadedPath = uploadService.load(storedFilename);
 
@@ -196,7 +282,7 @@ class UploadServiceTest {
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 xlsxContent
         );
-        String storedFilename = uploadService.store(file);
+        String storedFilename = uploadService.store(file, TEST_SESSION_ID);
 
         Resource resource = uploadService.loadAsResource(storedFilename);
 
@@ -231,8 +317,8 @@ class UploadServiceTest {
                 xlsxContent
         );
 
-        uploadService.store(file1);
-        uploadService.store(file2);
+        uploadService.store(file1, TEST_SESSION_ID);
+        uploadService.store(file2, TEST_SESSION_ID);
 
         Stream<Path> allFiles = uploadService.loadAll();
         List<Path> fileList = allFiles.toList();
@@ -251,7 +337,7 @@ class UploadServiceTest {
                 zipContent
         );
 
-        String storedFilename = uploadService.store(file);
+        String storedFilename = uploadService.store(file, TEST_SESSION_ID);
 
         assertNotNull(storedFilename);
         assertTrue(storedFilename.endsWith(".zip"));
@@ -268,7 +354,7 @@ class UploadServiceTest {
                 xlsmContent
         );
 
-        String storedFilename = uploadService.store(file);
+        String storedFilename = uploadService.store(file, TEST_SESSION_ID);
 
         assertTrue(storedFilename.endsWith(".xlsm"), "File extension should be preserved");
     }
@@ -285,7 +371,7 @@ class UploadServiceTest {
 
         // This should throw an exception because the validator checks for Excel or ZIP extensions
         StorageException exception = assertThrows(StorageException.class,
-                () -> uploadService.store(file));
+                () -> uploadService.store(file, TEST_SESSION_ID));
 
         assertTrue(exception.getMessage().contains("Excel or ZIP extension"));
     }
@@ -294,7 +380,8 @@ class UploadServiceTest {
     void testInit() throws IOException {
         // Test the init method (requires initialize to be called first to set rootLocation)
         FileCleanupService mockCleanupService = mock(FileCleanupService.class);
-        UploadService service = new UploadService(mockCleanupService);
+        FileOwnershipService mockOwnershipService = mock(FileOwnershipService.class);
+        UploadService service = new UploadService(mockCleanupService, mockOwnershipService);
         service.initialize(); // Must call initialize first to set rootLocation
 
         assertDoesNotThrow(() -> service.init());
@@ -317,12 +404,10 @@ class UploadServiceTest {
                 xlsxContent
         );
 
-        String storedFilename = uploadService.store(file);
+        String storedFilename = uploadService.store(file, TEST_SESSION_ID);
 
-        // Extract UUID from filename (format: UUID-hash.extension)
-        String uuidPart = storedFilename.split("-")[0] + "-" + storedFilename.split("-")[1] + "-" +
-                storedFilename.split("-")[2] + "-" + storedFilename.split("-")[3] + "-" +
-                storedFilename.split("-")[4];
+        // Extract UUID from filename (format: sessionID_UUID-hash.extension)
+        String uuidPart = extractUuidFromFilename(storedFilename);
         UUID uuid = UUID.fromString(uuidPart);
 
         // Verify it's a version 4 (random) UUID for security
@@ -340,7 +425,7 @@ class UploadServiceTest {
                 xlsxContent
         );
 
-        String storedFilename = uploadService.store(file);
+        String storedFilename = uploadService.store(file, TEST_SESSION_ID);
 
         // Compute expected hash
         String expectedHash = FileHasher.computeShortHash(new ByteArrayInputStream(xlsxContent));
@@ -360,13 +445,13 @@ class UploadServiceTest {
                 xlsxContent
         );
 
-        String storedFilename = uploadService.store(file);
+        String storedFilename = uploadService.store(file, TEST_SESSION_ID);
 
-        // Verify format: UUID-hash.extension
-        // Pattern: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx-hash.xlsx
+        // Verify format: sessionID_UUID-hash.extension
+        // Pattern: sessionID_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx-hash.xlsx
         assertTrue(storedFilename.matches(
-                "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[0-9a-f]{16}\\.xlsx"),
-                "Filename should match pattern: UUID-hash.extension"
+                "[a-zA-Z0-9]{1,12}_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[0-9a-f]{16}\\.xlsx"),
+                "Filename should match pattern: sessionID_UUID-hash.extension"
         );
     }
 
@@ -387,8 +472,8 @@ class UploadServiceTest {
                 xlsxContent
         );
 
-        String storedFilename1 = uploadService.store(file1);
-        String storedFilename2 = uploadService.store(file2);
+        String storedFilename1 = uploadService.store(file1, TEST_SESSION_ID);
+        String storedFilename2 = uploadService.store(file2, TEST_SESSION_ID);
 
         // Extract hashes from filenames
         String hash1 = extractHashFromFilename(storedFilename1);
@@ -423,8 +508,8 @@ class UploadServiceTest {
                 xlsxContent2
         );
 
-        String storedFilename1 = uploadService.store(file1);
-        String storedFilename2 = uploadService.store(file2);
+        String storedFilename1 = uploadService.store(file1, TEST_SESSION_ID);
+        String storedFilename2 = uploadService.store(file2, TEST_SESSION_ID);
 
         // Extract hashes from filenames
         String hash1 = extractHashFromFilename(storedFilename1);
@@ -451,8 +536,8 @@ class UploadServiceTest {
                 content
         );
 
-        String xlsxFilename = uploadService.store(xlsxFile);
-        String zipFilename = uploadService.store(zipFile);
+        String xlsxFilename = uploadService.store(xlsxFile, TEST_SESSION_ID);
+        String zipFilename = uploadService.store(zipFile, TEST_SESSION_ID);
 
         assertTrue(xlsxFilename.endsWith(".xlsx"),
                 "XLSX extension should be preserved");
@@ -470,7 +555,7 @@ class UploadServiceTest {
                 xlsxContent
         );
 
-        String storedFilename = uploadService.store(file);
+        String storedFilename = uploadService.store(file, TEST_SESSION_ID);
 
         // Extract UUID from filename
         String uuidString = extractUuidFromFilename(storedFilename);
@@ -486,9 +571,18 @@ class UploadServiceTest {
     // Helper methods for extracting UUID and hash from filename
 
     private String extractUuidFromFilename(String filename) {
-        // Format: UUID-hash.extension
+        // Format: sessionID_UUID-hash.extension
+        // First remove the session ID prefix (everything before the underscore)
+        int underscoreIndex = filename.indexOf('_');
+        if (underscoreIndex == -1) {
+            fail("Invalid filename format (no underscore): " + filename);
+            return null;
+        }
+
+        String withoutSessionId = filename.substring(underscoreIndex + 1);
+
         // UUID is the first 5 parts separated by hyphens
-        String[] parts = filename.split("-");
+        String[] parts = withoutSessionId.split("-");
         if (parts.length >= 5) {
             return parts[0] + "-" + parts[1] + "-" + parts[2] + "-" + parts[3] + "-" + parts[4];
         }
@@ -497,9 +591,18 @@ class UploadServiceTest {
     }
 
     private String extractHashFromFilename(String filename) {
-        // Format: UUID-hash.extension
+        // Format: sessionID_UUID-hash.extension
+        // First remove the session ID prefix (everything before the underscore)
+        int underscoreIndex = filename.indexOf('_');
+        if (underscoreIndex == -1) {
+            fail("Invalid filename format (no underscore): " + filename);
+            return null;
+        }
+
+        String withoutSessionId = filename.substring(underscoreIndex + 1);
+
         // Hash is after the 5th hyphen and before the dot
-        String[] parts = filename.split("-");
+        String[] parts = withoutSessionId.split("-");
         if (parts.length >= 6) {
             String lastPart = parts[5];
             // Remove extension
