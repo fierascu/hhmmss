@@ -308,7 +308,7 @@ class UploadServiceTest {
     // ===== New tests for UUID+hash naming scheme =====
 
     @Test
-    void testStoreUsesTimeBasedUuid() throws IOException {
+    void testStoreUsesSecureRandomUuid() throws IOException {
         byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -325,9 +325,9 @@ class UploadServiceTest {
                 storedFilename.split("-")[4];
         UUID uuid = UUID.fromString(uuidPart);
 
-        // Verify it's a version 7 UUID
-        assertTrue(TimeBasedUuidGenerator.isVersion7(uuid),
-                "Stored filename should use time-based UUID v7");
+        // Verify it's a version 4 (random) UUID for security
+        assertEquals(4, uuid.version(),
+                "Stored filename should use random UUID v4 for security");
     }
 
     @Test
@@ -461,7 +461,7 @@ class UploadServiceTest {
     }
 
     @Test
-    void testUuidTimestampReflectsUploadTime() throws IOException {
+    void testUuidIsUnpredictableAndSecure() throws IOException {
         byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -470,18 +470,17 @@ class UploadServiceTest {
                 xlsxContent
         );
 
-        long beforeUpload = System.currentTimeMillis();
         String storedFilename = uploadService.store(file);
-        long afterUpload = System.currentTimeMillis();
 
-        // Extract UUID and timestamp
+        // Extract UUID from filename
         String uuidString = extractUuidFromFilename(storedFilename);
         UUID uuid = UUID.fromString(uuidString);
-        long timestamp = TimeBasedUuidGenerator.extractTimestamp(uuid);
 
-        // Verify timestamp is within the upload time window
-        assertTrue(timestamp >= beforeUpload && timestamp <= afterUpload,
-                "UUID timestamp should reflect the upload time");
+        // Verify it's a version 4 UUID (random, unpredictable)
+        assertEquals(4, uuid.version(),
+                "UUID should be version 4 (random) to prevent enumeration attacks");
+        assertEquals(2, uuid.variant(),
+                "UUID should have RFC 4122 variant");
     }
 
     // Helper methods for extracting UUID and hash from filename

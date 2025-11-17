@@ -79,8 +79,8 @@ public class UploadService {
                 fileHash = FileHasher.computeShortHash(hashStream);
             }
 
-            // Generate time-based UUID for creation time traceability
-            UUID timeBasedUuid = TimeBasedUuidGenerator.generate();
+            // Generate secure random UUID to prevent filename enumeration attacks
+            UUID secureRandomUuid = TimeBasedUuidGenerator.generate();
 
             // Extract original file extension
             String fileExtension = "";
@@ -90,8 +90,8 @@ public class UploadService {
             }
 
             // Build filename: UUID-hash-originalExtension
-            // Example: 018c5e1e-3f2a-7b4c-9d6e-1a2b3c4d5e6f-a1b2c3d4e5f67890.xlsx
-            String secureFilename = timeBasedUuid + "-" + fileHash + fileExtension;
+            // Example: 550e8400-e29b-41d4-a716-446655440000-a1b2c3d4e5f67890.xlsx
+            String secureFilename = secureRandomUuid + "-" + fileHash + fileExtension;
 
             Path destinationFile = this.rootLocation.resolve(Paths.get(secureFilename))
                     .normalize().toAbsolutePath();
@@ -103,7 +103,7 @@ public class UploadService {
             // Write file content to destination
             Files.write(destinationFile, fileContent);
             log.info("File '{}' uploaded successfully as: {} (UUID: {}, Hash: {})",
-                    originalFilename, secureFilename, timeBasedUuid, fileHash);
+                    originalFilename, secureFilename, secureRandomUuid, fileHash);
 
             return secureFilename;
         } catch (IOException e) {
