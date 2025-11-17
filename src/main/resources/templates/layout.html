@@ -297,6 +297,9 @@
             font-family: var(--font-family);
             letter-spacing: 1px;
             background: var(--card-bg);
+            position: relative;
+            z-index: 10;
+            touch-action: manipulation;
         }
 
         body[data-theme="classic"] .btn {
@@ -646,6 +649,11 @@
 
             .card {
                 padding: 1.5rem;
+            }
+
+            .btn {
+                min-height: 44px;
+                -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
             }
         }
     </style>
