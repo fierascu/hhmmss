@@ -210,7 +210,16 @@ public class UploadService {
     }
 
     public Path load(String filename) {
-        return rootLocation.resolve(filename);
+        // Validate the filename: disallow "..", "/", "\\" to avoid path traversal
+        if (filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
+            throw new StorageFileNotFoundException("Invalid filename: contains parent directory or path separator.");
+        }
+        Path resolvedPath = rootLocation.resolve(filename).normalize().toAbsolutePath();
+        Path rootAbs = rootLocation.toAbsolutePath().normalize();
+        if (!resolvedPath.startsWith(rootAbs)) {
+            throw new StorageFileNotFoundException("Invalid filename: escapes storage directory.");
+        }
+        return resolvedPath;
     }
 
     public Resource loadAsResource(String filename) {
