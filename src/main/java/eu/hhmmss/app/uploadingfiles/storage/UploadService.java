@@ -96,12 +96,8 @@ public class UploadService {
             // Generate secure random UUID to prevent filename enumeration attacks
             UUID secureRandomUuid = TimeBasedUuidGenerator.generate();
 
-            // Extract original file extension
-            String fileExtension = "";
-            int lastDotIndex = originalFilename.lastIndexOf('.');
-            if (lastDotIndex > 0) {
-                fileExtension = originalFilename.substring(lastDotIndex);
-            }
+            // Extract and sanitize original file extension to prevent path traversal
+            String fileExtension = extractSafeExtension(originalFilename);
 
             // Build filename with session ID prefix: sessionID_UUID-hash-originalExtension
             // Example: ABC123DEF456_550e8400-e29b-41d4-a716-446655440000-a1b2c3d4e5f67890.xlsx
@@ -146,6 +142,47 @@ public class UploadService {
         // Take first 12 characters and remove any non-alphanumeric characters
         String cleaned = sessionId.replaceAll("[^a-zA-Z0-9]", "");
         return cleaned.substring(0, Math.min(12, cleaned.length()));
+    }
+
+    /**
+     * Extracts and sanitizes file extension from filename to prevent path traversal attacks.
+     * Only allows safe characters (alphanumeric, dot, hyphen) and removes any path separators.
+     *
+     * Security: Prevents attackers from using malicious filenames like "test.xlsx/../../../etc/passwd"
+     * to traverse outside the upload directory.
+     *
+     * @param filename the original filename
+     * @return sanitized file extension (e.g., ".xlsx", ".xls") or empty string if invalid
+     */
+    private String extractSafeExtension(String filename) {
+        if (filename == null || filename.isEmpty()) {
+            return "";
+        }
+
+        // Find the last dot in the filename
+        int lastDotIndex = filename.lastIndexOf('.');
+        if (lastDotIndex <= 0 || lastDotIndex == filename.length() - 1) {
+            return ""; // No extension or dot at the beginning/end
+        }
+
+        // Extract the part after the last dot
+        String extension = filename.substring(lastDotIndex);
+
+        // Security: Remove any path separators or special characters that could enable path traversal
+        // Only allow: dot, alphanumeric characters, and hyphen (for extensions like .xlsm)
+        extension = extension.replaceAll("[^.a-zA-Z0-9-]", "");
+
+        // Additional security: Ensure extension doesn't contain multiple dots or start with anything but a dot
+        if (!extension.startsWith(".") || extension.indexOf('.', 1) != -1) {
+            return "";
+        }
+
+        // Validate it's a reasonable length (most extensions are 2-5 chars)
+        if (extension.length() > 10) {
+            return "";
+        }
+
+        return extension.toLowerCase(); // Normalize to lowercase
     }
 
     /**

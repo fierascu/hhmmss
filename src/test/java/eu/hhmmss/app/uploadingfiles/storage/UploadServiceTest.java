@@ -172,6 +172,89 @@ class UploadServiceTest {
     }
 
     @Test
+    void testStoreFileWithPathTraversalInExtension() {
+        byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+
+        // Malicious filename with path traversal in extension
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.xlsx/../../../etc/passwd",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        // The extension will be sanitized to empty or invalid, causing validation to fail
+        StorageException exception = assertThrows(StorageException.class,
+                () -> uploadService.store(file, TEST_SESSION_ID));
+
+        assertTrue(exception.getMessage().contains("Excel or ZIP extension"),
+                "Should reject file with malicious extension");
+    }
+
+    @Test
+    void testStoreFileWithNullByteInFilename() {
+        byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+
+        // Malicious filename with null byte (could bypass extension checks in some systems)
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.xlsx\0.txt",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        // The extension will be sanitized, removing the null byte and .txt, leaving .xlsx
+        // However, the null byte in the filename will be stripped by extractSafeExtension
+        // The sanitized extension will be ".txt" (after the null byte) which is invalid
+        StorageException exception = assertThrows(StorageException.class,
+                () -> uploadService.store(file, TEST_SESSION_ID));
+
+        assertTrue(exception.getMessage().contains("Excel or ZIP extension"),
+                "Should reject file with null byte in extension");
+    }
+
+    @Test
+    void testStoreFileWithAbsolutePath() {
+        byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+
+        // Malicious filename with absolute path
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "/etc/passwd.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        String storedFilename = uploadService.store(file, TEST_SESSION_ID);
+
+        // The stored filename should not contain absolute path
+        assertNotNull(storedFilename);
+        assertFalse(storedFilename.startsWith("/"), "Filename should not start with '/'");
+        assertFalse(storedFilename.contains("/etc/"), "Filename should not contain '/etc/'");
+    }
+
+    @Test
+    void testStoreFileWithWindowsPathTraversal() {
+        byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
+
+        // Malicious filename with Windows path traversal
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "..\\..\\..\\windows\\system32\\config.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                xlsxContent
+        );
+
+        String storedFilename = uploadService.store(file, TEST_SESSION_ID);
+
+        // The stored filename should not contain backslashes or path traversal
+        assertNotNull(storedFilename);
+        assertFalse(storedFilename.contains(".."), "Filename should not contain '..'");
+        assertFalse(storedFilename.contains("\\"), "Filename should not contain backslashes");
+        assertFalse(storedFilename.contains("windows"), "Filename should not contain 'windows'");
+    }
+
+    @Test
     void testLoad() throws IOException {
         // Store a file first
         byte[] xlsxContent = {0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00};
