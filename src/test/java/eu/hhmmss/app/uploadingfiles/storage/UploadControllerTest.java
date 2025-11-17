@@ -516,7 +516,7 @@ class UploadControllerTest {
         // Use existing path to avoid file I/O issues in unit test
         Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
 
-        when(uploadService.load("2024-11.xlsx")).thenReturn(testExistingPath);
+        when(uploadService.load("timesheet-2024-11.xlsx")).thenReturn(testExistingPath);
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate")
                         .param("period", period))
@@ -535,7 +535,7 @@ class UploadControllerTest {
     void testHandleGenerateWithoutPeriod() throws Exception {
         // Should default to current month and year
         java.time.LocalDate now = java.time.LocalDate.now();
-        String expectedFilename = String.format("%d-%02d.xlsx", now.getYear(), now.getMonthValue());
+        String expectedFilename = String.format("timesheet-%d-%02d.xlsx", now.getYear(), now.getMonthValue());
         // Use existing path to avoid file I/O issues in unit test
         Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
 
@@ -555,7 +555,7 @@ class UploadControllerTest {
     void testHandleGenerateWithEmptyPeriod() throws Exception {
         // Empty period should default to current month and year
         java.time.LocalDate now = java.time.LocalDate.now();
-        String expectedFilename = String.format("%d-%02d.xlsx", now.getYear(), now.getMonthValue());
+        String expectedFilename = String.format("timesheet-%d-%02d.xlsx", now.getYear(), now.getMonthValue());
         // Use existing path to avoid file I/O issues in unit test
         Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
 
@@ -577,7 +577,7 @@ class UploadControllerTest {
         // Use existing path to avoid file I/O issues in unit test
         Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
 
-        when(uploadService.load("2024-11.xlsx")).thenReturn(testExistingPath);
+        when(uploadService.load("timesheet-2024-11.xlsx")).thenReturn(testExistingPath);
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate")
                         .param("period", period)
@@ -595,7 +595,7 @@ class UploadControllerTest {
         Path testExistingPath = Paths.get("src/test/resources/timesheet-in.xlsx");
 
         // Return a path that actually exists to simulate cache hit
-        when(uploadService.load("2024-11.xlsx")).thenReturn(testExistingPath);
+        when(uploadService.load("timesheet-2024-11.xlsx")).thenReturn(testExistingPath);
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/generate")
                         .param("period", period))

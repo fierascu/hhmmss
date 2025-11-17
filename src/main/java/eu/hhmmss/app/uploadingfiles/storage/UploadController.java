@@ -342,8 +342,8 @@ public class UploadController {
             String formattedPeriod = formatPeriod(period);
             log.info("Generating new timesheet from template with period: {}", formattedPeriod);
 
-            // Generate filename based on period (e.g., "2025-11.xlsx")
-            String filename = period + ".xlsx";
+            // Generate filename based on period (e.g., "timesheet-2025-11.xlsx")
+            String filename = "timesheet-" + period + ".xlsx";
             Path generatedExcelPath = uploadService.load(filename);
 
             // Check if file already exists (caching mechanism)
