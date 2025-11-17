@@ -46,6 +46,10 @@ public class UploadService {
 
             // Clear all files in the uploads folder on startup for security purposes
             fileCleanupService.cleanupAllFiles();
+
+            // Pre-generate templates for common months after cleanup
+            fileCleanupService.preGenerateTemplates();
+
         } catch (IOException e) {
             throw new StorageException("Could not initialize temporary storage", e);
         }

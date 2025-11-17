@@ -60,7 +60,7 @@ public class FileCleanupService {
      * This warms up the cache after cleanup to ensure fast response times for common requests.
      * Templates are only generated if they don't already exist.
      */
-    private void preGenerateTemplates() {
+    public void preGenerateTemplates() {
         log.info("Starting template pre-generation for previous, current, and next month");
 
         YearMonth now = YearMonth.now();

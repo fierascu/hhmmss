@@ -400,7 +400,7 @@ class FileCleanupServiceTest {
         Path validTemplate3 = testUploadLocation.resolve("timesheet-any-suffix.xlsx"); // Any suffix works
         Path invalidTemplate1 = testUploadLocation.resolve("2025-11.xlsx"); // Missing prefix
         Path invalidTemplate2 = testUploadLocation.resolve("mytimesheet-2025-11.xlsx"); // Wrong prefix
-        Path invalidTemplate3 = testUploadLocation.resolve("Timesheet-2025-11.xlsx"); // Wrong case
+        Path invalidTemplate3 = testUploadLocation.resolve("Timesheet-2025-06.xlsx"); // Wrong case
         Path invalidTemplate4 = testUploadLocation.resolve("user-timesheet-2025-11.xlsx"); // Prefix in middle
         Path regularFile = testUploadLocation.resolve("report.pdf");
 
@@ -432,7 +432,7 @@ class FileCleanupServiceTest {
         // Files not starting with "timesheet-" should be deleted
         assertFalse(Files.exists(invalidTemplate1), "2025-11.xlsx should be deleted (missing prefix)");
         assertFalse(Files.exists(invalidTemplate2), "mytimesheet-2025-11.xlsx should be deleted (wrong prefix)");
-        assertFalse(Files.exists(invalidTemplate3), "Timesheet-2025-11.xlsx should be deleted (wrong case)");
+        assertFalse(Files.exists(invalidTemplate3), "Timesheet-2025-06.xlsx should be deleted (wrong case)");
         assertFalse(Files.exists(invalidTemplate4), "user-timesheet-2025-11.xlsx should be deleted (prefix in middle)");
         assertFalse(Files.exists(regularFile), "report.pdf should be deleted");
     }
