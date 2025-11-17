@@ -118,7 +118,7 @@ public class XlsService {
             log.error("Error reading file: {}", xlsxPath, e);
         }
 
-        log.info("xlsxFormat: {}", hhmmssDto);
+        log.info("xlsxFormat tasks: {}, metas: {}", hhmmssDto.getTasks().size(), hhmmssDto.getMeta().size());
         return hhmmssDto;
     }
 
