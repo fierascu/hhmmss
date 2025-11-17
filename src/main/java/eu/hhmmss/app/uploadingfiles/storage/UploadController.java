@@ -44,6 +44,7 @@ public class UploadController {
     private final PdfService pdfService;
     private final ThrottlingService throttlingService;
     private final XlsService xlsService;
+    private final FileOwnershipService fileOwnershipService;
 
     @Value("${app.upload.max-xlsx-size}")
     private long maxXlsxSize;
@@ -78,7 +79,14 @@ public class UploadController {
 
     @GetMapping("/files/{filename:.+}")
     @ResponseBody
-    public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
+    public ResponseEntity<Resource> serveFile(@PathVariable String filename, HttpSession session) {
+        // Security check: Verify file ownership before serving
+        // Prevents IDOR (Insecure Direct Object Reference) attacks
+        if (!fileOwnershipService.verifyOwnership(session, filename)) {
+            log.warn("Unauthorized file access attempt: session={}, file={}",
+                    session.getId().substring(0, Math.min(8, session.getId().length())), filename);
+            return ResponseEntity.status(403).build(); // 403 Forbidden
+        }
 
         Resource file = uploadService.loadAsResource(filename);
 
@@ -91,7 +99,8 @@ public class UploadController {
     @PostMapping("/")
     public String handleFileUpload(@RequestParam("file") MultipartFile file,
                                    @RequestParam(required = false) String theme,
-                                   RedirectAttributes redirectAttributes) {
+                                   RedirectAttributes redirectAttributes,
+                                   HttpSession session) {
         // Acquire permit for throttling - throws TooManyRequestsException if unavailable
         throttlingService.acquirePermit();
 
@@ -99,8 +108,9 @@ public class UploadController {
             // Step 0: Validate file size based on file type
             validateFileSize(file);
 
-            // Step 1: Store the uploaded file
-            String uuidFilename = uploadService.store(file);
+            // Step 1: Store the uploaded file with session-based ownership
+            String sessionId = session.getId();
+            String uuidFilename = uploadService.store(file, sessionId);
             log.info("Stored uploaded file as: {}", uuidFilename);
 
             Path uploadedFilePath = uploadService.load(uuidFilename);
@@ -108,9 +118,9 @@ public class UploadController {
 
             // Check if the file is a ZIP archive
             if (isZipFile(originalFilename)) {
-                return handleZipFile(uploadedFilePath, uuidFilename, originalFilename, theme, redirectAttributes);
+                return handleZipFile(uploadedFilePath, uuidFilename, originalFilename, theme, redirectAttributes, sessionId);
             } else {
-                return handleExcelFile(uploadedFilePath, uuidFilename, originalFilename, theme, redirectAttributes);
+                return handleExcelFile(uploadedFilePath, uuidFilename, originalFilename, theme, redirectAttributes, sessionId);
             }
 
         } catch (StorageException e) {
@@ -147,7 +157,7 @@ public class UploadController {
      * Handles processing of a single Excel file.
      */
     private String handleExcelFile(Path uploadedFilePath, String uuidFilename, String originalFilename,
-                                    String theme, RedirectAttributes redirectAttributes) throws IOException, OfficeException {
+                                    String theme, RedirectAttributes redirectAttributes, String sessionId) throws IOException, OfficeException {
         // Step 2: Parse the uploaded XLS file
         HhmmssDto extractedData = XlsService.readTimesheet(uploadedFilePath);
         log.info("Extracted data from uploaded file: {} tasks, {} meta fields",
@@ -176,6 +186,9 @@ public class UploadController {
         DocService.addDataToDocs(tempTemplate, extractedData, extractedFilePath);
         log.info("Generated timesheet DOCX file as: {}", extractedFilename);
 
+        // Track ownership for generated DOCX file
+        uploadService.trackGeneratedFile(uuidFilename, extractedFilename, sessionId);
+
         // Clean up temp template
         Files.deleteIfExists(tempTemplate);
 
@@ -186,12 +199,18 @@ public class UploadController {
         pdfService.convertXlsToPdf(uploadedFilePath, xlsPdfPath);
         log.info("Generated PDF from input XLS as: {}", xlsPdfFilename);
 
+        // Track ownership for XLS PDF file
+        uploadService.trackGeneratedFile(uuidFilename, xlsPdfFilename, sessionId);
+
         // Step 5: Generate PDF from output DOC (1:1 print)
         // Traceability: UUID-hash-originalExtension.docx.pdf
         String docPdfFilename = extractedFilename + ".pdf";
         Path docPdfPath = uploadService.load(docPdfFilename);
         pdfService.convertDocToPdf(extractedFilePath, docPdfPath);
         log.info("Generated PDF from output DOC as: {}", docPdfFilename);
+
+        // Track ownership for DOC PDF file
+        uploadService.trackGeneratedFile(uuidFilename, docPdfFilename, sessionId);
 
         // Build list of generated files for display
         java.util.List<String> generatedFiles = new java.util.ArrayList<>();
@@ -230,7 +249,7 @@ public class UploadController {
      * Handles processing of a ZIP file containing multiple Excel files.
      */
     private String handleZipFile(Path zipFilePath, String uuidFilename, String originalFilename, String theme,
-                                  RedirectAttributes redirectAttributes) throws IOException {
+                                  RedirectAttributes redirectAttributes, String sessionId) throws IOException {
         log.info("Processing ZIP file: {}", originalFilename);
 
         // Prepare template
@@ -245,6 +264,9 @@ public class UploadController {
         ZipProcessingService.ZipProcessingResult result = zipProcessingService.processZipFile(
                 zipFilePath, uuidFilename, tempTemplate, outputDir
         );
+
+        // Track ownership for the result ZIP file
+        uploadService.trackGeneratedFile(uuidFilename, result.resultZipFileName(), sessionId);
 
         // Clean up temp template
         Files.deleteIfExists(tempTemplate);
@@ -327,7 +349,8 @@ public class UploadController {
     @PostMapping("/generate")
     public String handleGenerate(@RequestParam(required = false) String period,
                                  @RequestParam(required = false) String theme,
-                                 RedirectAttributes redirectAttributes) {
+                                 RedirectAttributes redirectAttributes,
+                                 HttpSession session) {
         // Acquire permit for throttling
         throttlingService.acquirePermit();
 
@@ -341,6 +364,9 @@ public class UploadController {
 
             String formattedPeriod = formatPeriod(period);
             log.info("Generating new timesheet from template with period: {}", formattedPeriod);
+
+            // Get session ID for ownership tracking
+            String sessionId = session.getId();
 
             // Generate filename based on period (e.g., "timesheet-2025-11.xlsx")
             String filename = "timesheet-" + period + ".xlsx";
@@ -370,6 +396,9 @@ public class UploadController {
                     return buildRedirectUrl(theme);
                 }
             }
+
+            // Track ownership for the generated template file (whether cached or newly created)
+            fileOwnershipService.trackFile(sessionId, filename);
 
             // Build list of generated files for display (only Excel)
             java.util.List<String> generatedFiles = new java.util.ArrayList<>();
