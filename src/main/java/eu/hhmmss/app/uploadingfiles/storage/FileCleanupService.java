@@ -33,6 +33,19 @@ public class FileCleanupService {
     }
 
     /**
+     * Checks if a file is a generated template XLSX file.
+     * Generated templates have filenames starting with "timesheet-" (e.g., timesheet-2025-11.xlsx)
+     * and are the same for all users, so they should be cached and not deleted.
+     *
+     * @param file the file to check
+     * @return true if the file is a generated template, false otherwise
+     */
+    private boolean isGeneratedTemplate(Path file) {
+        String filename = file.getFileName().toString();
+        return filename.startsWith("timesheet-");
+    }
+
+    /**
      * Scheduled job that runs at midnight every day to clean up old files.
      * Cron expression: "0 0 0 * * *" means:
      * - second: 0
@@ -61,6 +74,11 @@ public class FileCleanupService {
                 try {
                     if (Files.isDirectory(file)) {
                         log.debug("Skipping directory: {}", file.getFileName());
+                        continue;
+                    }
+
+                    if (isGeneratedTemplate(file)) {
+                        log.debug("Skipping generated template: {}", file.getFileName());
                         continue;
                     }
 
@@ -106,6 +124,7 @@ public class FileCleanupService {
     /**
      * Clears all files in the uploads folder regardless of age.
      * This is intended for security purposes on application startup.
+     * Generated templates are preserved as they are the same for all users.
      */
     public void cleanupAllFiles() {
         log.info("Starting cleanup of all files in uploads folder");
@@ -124,6 +143,11 @@ public class FileCleanupService {
                 try {
                     if (Files.isDirectory(file)) {
                         log.debug("Skipping directory: {}", file.getFileName());
+                        continue;
+                    }
+
+                    if (isGeneratedTemplate(file)) {
+                        log.debug("Skipping generated template: {}", file.getFileName());
                         continue;
                     }
 
