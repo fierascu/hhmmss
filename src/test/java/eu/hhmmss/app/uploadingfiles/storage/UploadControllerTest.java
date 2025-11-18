@@ -317,6 +317,7 @@ class UploadControllerTest {
         };
 
         when(uploadService.loadAsResource("document.docx")).thenReturn(resource);
+        when(fileOwnershipService.verifyOwnership(any(), eq("document.docx"))).thenReturn(true);
 
         mockMvc.perform(get("/files/document.docx"))
                 .andExpect(status().isOk())
@@ -337,6 +338,7 @@ class UploadControllerTest {
         };
 
         when(uploadService.loadAsResource("document.pdf")).thenReturn(resource);
+        when(fileOwnershipService.verifyOwnership(any(), eq("document.pdf"))).thenReturn(true);
 
         mockMvc.perform(get("/files/document.pdf"))
                 .andExpect(status().isOk())
@@ -357,6 +359,7 @@ class UploadControllerTest {
         };
 
         when(uploadService.loadAsResource("archive.zip")).thenReturn(resource);
+        when(fileOwnershipService.verifyOwnership(any(), eq("archive.zip"))).thenReturn(true);
 
         mockMvc.perform(get("/files/archive.zip"))
                 .andExpect(status().isOk())
@@ -377,6 +380,7 @@ class UploadControllerTest {
         };
 
         when(uploadService.loadAsResource("workbook.xlsm")).thenReturn(resource);
+        when(fileOwnershipService.verifyOwnership(any(), eq("workbook.xlsm"))).thenReturn(true);
 
         mockMvc.perform(get("/files/workbook.xlsm"))
                 .andExpect(status().isOk())
@@ -397,6 +401,7 @@ class UploadControllerTest {
         };
 
         when(uploadService.loadAsResource("workbook.xlsb")).thenReturn(resource);
+        when(fileOwnershipService.verifyOwnership(any(), eq("workbook.xlsb"))).thenReturn(true);
 
         mockMvc.perform(get("/files/workbook.xlsb"))
                 .andExpect(status().isOk())
@@ -417,6 +422,7 @@ class UploadControllerTest {
         };
 
         when(uploadService.loadAsResource("workbook.xls")).thenReturn(resource);
+        when(fileOwnershipService.verifyOwnership(any(), eq("workbook.xls"))).thenReturn(true);
 
         mockMvc.perform(get("/files/workbook.xls"))
                 .andExpect(status().isOk())
@@ -437,6 +443,7 @@ class UploadControllerTest {
         };
 
         when(uploadService.loadAsResource("file.unknown")).thenReturn(resource);
+        when(fileOwnershipService.verifyOwnership(any(), eq("file.unknown"))).thenReturn(true);
 
         mockMvc.perform(get("/files/file.unknown"))
                 .andExpect(status().isOk())

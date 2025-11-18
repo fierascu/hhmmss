@@ -48,9 +48,11 @@ public class XxeProtectionConfig {
         System.setProperty("javax.xml.stream.XMLInputFactory",
                 "com.ctc.wstx.stax.WstxInputFactory");
 
-        // Additional protection: Disable entity expansion
+        // Additional protection: Limit entity expansion
         // Prevents billion laughs attack (exponential entity expansion)
-        System.setProperty("jdk.xml.entityExpansionLimit", "0");
+        // Setting to 64 (a small positive value) enforces a strict limit
+        // Note: 0 means "no limit" which would be insecure
+        System.setProperty("jdk.xml.entityExpansionLimit", "64");
 
         // Disable external general entities (for older JDK versions)
         System.setProperty("http://apache.org/xml/features/disallow-doctype-decl", "true");
@@ -60,7 +62,7 @@ public class XxeProtectionConfig {
         log.info("XXE protection configured successfully:");
         log.info("  - External entities: DISABLED");
         log.info("  - DTD support: DISABLED");
-        log.info("  - Entity expansion limit: 0");
+        log.info("  - Entity expansion limit: 64");
         log.info("  - XML Input Factory: com.ctc.wstx.stax.WstxInputFactory");
     }
 }
