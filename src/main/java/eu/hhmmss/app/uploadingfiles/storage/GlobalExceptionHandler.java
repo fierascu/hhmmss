@@ -12,7 +12,22 @@ import org.springframework.web.servlet.ModelAndView;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
+/**
+ * Global exception handler with error message sanitization.
+ *
+ * Security Features:
+ * - Generates unique error reference IDs for tracking
+ * - Logs detailed errors server-side with reference ID
+ * - Shows only generic, sanitized messages to users
+ * - Prevents information disclosure through error messages
+ *
+ * Best Practice:
+ * Never expose internal error details (file paths, stack traces, SQL queries, etc.)
+ * to end users. Always log detailed errors server-side and provide users with
+ * a reference ID they can share with support.
+ */
 @ControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
@@ -58,14 +73,20 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(StorageFileNotFoundException.class)
     public ModelAndView handleStorageFileNotFound(StorageFileNotFoundException exc, HttpServletRequest request) {
-        log.error("File not found: {}", exc.getMessage());
+        // Generate unique error reference ID
+        String errorId = generateErrorId();
 
+        // Log detailed error server-side with reference ID
+        log.error("[Error ID: {}] File not found: {} - Path: {}",
+                errorId, exc.getMessage(), request.getRequestURI(), exc);
+
+        // Return sanitized error message to user
         ModelAndView mav = new ModelAndView("error");
         mav.addObject("status", HttpStatus.NOT_FOUND.value());
         mav.addObject("error", HttpStatus.NOT_FOUND.getReasonPhrase());
-        mav.addObject("message", exc.getMessage());
+        mav.addObject("message", "The requested file was not found. Reference ID: " + errorId);
         mav.addObject("timestamp", LocalDateTime.now());
-        mav.addObject("path", request.getRequestURI());
+        mav.addObject("path", sanitizePath(request.getRequestURI()));
         mav.setStatus(HttpStatus.NOT_FOUND);
 
         return mav;
@@ -73,14 +94,20 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(StorageException.class)
     public ModelAndView handleStorageException(StorageException exc, HttpServletRequest request) {
-        log.error("Storage error: {}", exc.getMessage(), exc);
+        // Generate unique error reference ID
+        String errorId = generateErrorId();
 
+        // Log detailed error server-side with reference ID
+        log.error("[Error ID: {}] Storage error: {} - Path: {}",
+                errorId, exc.getMessage(), request.getRequestURI(), exc);
+
+        // Return sanitized error message to user
         ModelAndView mav = new ModelAndView("error");
         mav.addObject("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         mav.addObject("error", HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase());
-        mav.addObject("message", exc.getMessage());
+        mav.addObject("message", "A file storage error occurred. Please try again. Reference ID: " + errorId);
         mav.addObject("timestamp", LocalDateTime.now());
-        mav.addObject("path", request.getRequestURI());
+        mav.addObject("path", sanitizePath(request.getRequestURI()));
         mav.setStatus(HttpStatus.INTERNAL_SERVER_ERROR);
 
         return mav;
@@ -88,16 +115,57 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ModelAndView handleGenericException(Exception exc, HttpServletRequest request) {
-        log.error("Unexpected error occurred: {}", exc.getMessage(), exc);
+        // Generate unique error reference ID
+        String errorId = generateErrorId();
 
+        // Log detailed error server-side with reference ID
+        log.error("[Error ID: {}] Unexpected error occurred: {} - Type: {} - Path: {}",
+                errorId, exc.getMessage(), exc.getClass().getName(), request.getRequestURI(), exc);
+
+        // Return sanitized error message to user (no exception details)
         ModelAndView mav = new ModelAndView("error");
         mav.addObject("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         mav.addObject("error", HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase());
-        mav.addObject("message", "An unexpected error occurred: " + exc.getMessage());
+        mav.addObject("message", "An unexpected error occurred. Please try again or contact support. Reference ID: " + errorId);
         mav.addObject("timestamp", LocalDateTime.now());
-        mav.addObject("path", request.getRequestURI());
+        mav.addObject("path", sanitizePath(request.getRequestURI()));
         mav.setStatus(HttpStatus.INTERNAL_SERVER_ERROR);
 
         return mav;
+    }
+
+    /**
+     * Generates a unique error reference ID for tracking and support purposes.
+     * Uses UUID v4 for guaranteed uniqueness.
+     *
+     * @return a unique error reference ID
+     */
+    private String generateErrorId() {
+        return UUID.randomUUID().toString();
+    }
+
+    /**
+     * Sanitizes request path to prevent information disclosure.
+     * Removes sensitive information while keeping useful context.
+     *
+     * @param path the request URI path
+     * @return sanitized path
+     */
+    private String sanitizePath(String path) {
+        if (path == null) {
+            return "/";
+        }
+
+        // Remove query parameters that might contain sensitive data
+        int queryStart = path.indexOf('?');
+        if (queryStart > 0) {
+            path = path.substring(0, queryStart);
+        }
+
+        // Remove session IDs or tokens from path if present
+        path = path.replaceAll("[a-f0-9]{32,}", "[ID]"); // Replace long hex strings
+        path = path.replaceAll("[A-Za-z0-9]{20,}", "[TOKEN]"); // Replace long alphanumeric strings
+
+        return path;
     }
 }
