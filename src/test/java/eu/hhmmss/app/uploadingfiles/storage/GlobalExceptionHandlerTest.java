@@ -38,6 +38,7 @@ class GlobalExceptionHandlerTest {
 
         when(request.getSession()).thenReturn(session);
         when(request.getContextPath()).thenReturn("");
+        when(request.getParameter("theme")).thenReturn(null);
 
         handler.handleMaxSizeException(exception, request, response);
 
@@ -51,6 +52,7 @@ class GlobalExceptionHandlerTest {
 
         when(request.getSession()).thenReturn(session);
         when(request.getContextPath()).thenReturn("/myapp");
+        when(request.getParameter("theme")).thenReturn(null);
 
         handler.handleMaxSizeException(exception, request, response);
 
@@ -64,6 +66,7 @@ class GlobalExceptionHandlerTest {
 
         when(request.getSession()).thenReturn(session);
         when(request.getContextPath()).thenReturn("");
+        when(request.getParameter("theme")).thenReturn(null);
 
         handler.handleMaxSizeException(exception, request, response);
 
@@ -77,6 +80,7 @@ class GlobalExceptionHandlerTest {
 
         when(request.getSession()).thenReturn(session);
         when(request.getContextPath()).thenReturn("/app");
+        when(request.getParameter("theme")).thenReturn(null);
 
         handler.handleMaxSizeException(exception, request, response);
 
@@ -88,11 +92,40 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void testHandleMaxSizeExceptionPreservesTerminalTheme() throws IOException {
+        MaxUploadSizeExceededException exception = new MaxUploadSizeExceededException(128000);
+
+        when(request.getSession()).thenReturn(session);
+        when(request.getContextPath()).thenReturn("");
+        when(request.getParameter("theme")).thenReturn("terminal");
+
+        handler.handleMaxSizeException(exception, request, response);
+
+        verify(session).setAttribute("uploadError", "File size exceeds the maximum limit of 2MB.");
+        verify(response).sendRedirect("/?theme=terminal");
+    }
+
+    @Test
+    void testHandleMaxSizeExceptionPreservesClassicTheme() throws IOException {
+        MaxUploadSizeExceededException exception = new MaxUploadSizeExceededException(128000);
+
+        when(request.getSession()).thenReturn(session);
+        when(request.getContextPath()).thenReturn("");
+        when(request.getParameter("theme")).thenReturn("classic");
+
+        handler.handleMaxSizeException(exception, request, response);
+
+        verify(session).setAttribute("uploadError", "File size exceeds the maximum limit of 2MB.");
+        verify(response).sendRedirect("/?theme=classic");
+    }
+
+    @Test
     void testHandleTooManyRequests() throws IOException {
         TooManyRequestsException exception = new TooManyRequestsException("Server is busy");
 
         when(request.getSession()).thenReturn(session);
         when(request.getContextPath()).thenReturn("");
+        when(request.getParameter("theme")).thenReturn(null);
 
         handler.handleTooManyRequests(exception, request, response);
 
@@ -106,6 +139,7 @@ class GlobalExceptionHandlerTest {
 
         when(request.getSession()).thenReturn(session);
         when(request.getContextPath()).thenReturn("/myapp");
+        when(request.getParameter("theme")).thenReturn(null);
 
         handler.handleTooManyRequests(exception, request, response);
 
@@ -114,11 +148,26 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void testHandleTooManyRequestsPreservesTheme() throws IOException {
+        TooManyRequestsException exception = new TooManyRequestsException("Server is busy");
+
+        when(request.getSession()).thenReturn(session);
+        when(request.getContextPath()).thenReturn("");
+        when(request.getParameter("theme")).thenReturn("terminal");
+
+        handler.handleTooManyRequests(exception, request, response);
+
+        verify(session).setAttribute("uploadError", "Server is busy");
+        verify(response).sendRedirect("/?theme=terminal");
+    }
+
+    @Test
     void testHandleFileSizeExceeded() throws IOException {
         FileSizeExceededException exception = new FileSizeExceededException("Excel file size (250.00 KB) exceeds the maximum limit of 200 KB.");
 
         when(request.getSession()).thenReturn(session);
         when(request.getContextPath()).thenReturn("");
+        when(request.getParameter("theme")).thenReturn(null);
 
         handler.handleFileSizeExceeded(exception, request, response);
 
@@ -132,6 +181,7 @@ class GlobalExceptionHandlerTest {
 
         when(request.getSession()).thenReturn(session);
         when(request.getContextPath()).thenReturn("/app");
+        when(request.getParameter("theme")).thenReturn(null);
 
         handler.handleFileSizeExceeded(exception, request, response);
 
@@ -145,6 +195,7 @@ class GlobalExceptionHandlerTest {
 
         when(request.getSession()).thenReturn(session);
         when(request.getContextPath()).thenReturn("");
+        when(request.getParameter("theme")).thenReturn(null);
 
         handler.handleFileSizeExceeded(exception, request, response);
 
@@ -153,5 +204,19 @@ class GlobalExceptionHandlerTest {
 
         // Verify that response.sendRedirect is called exactly once
         verify(response, times(1)).sendRedirect(anyString());
+    }
+
+    @Test
+    void testHandleFileSizeExceededPreservesTheme() throws IOException {
+        FileSizeExceededException exception = new FileSizeExceededException("File too large");
+
+        when(request.getSession()).thenReturn(session);
+        when(request.getContextPath()).thenReturn("");
+        when(request.getParameter("theme")).thenReturn("classic");
+
+        handler.handleFileSizeExceeded(exception, request, response);
+
+        verify(session).setAttribute("uploadError", "File too large");
+        verify(response).sendRedirect("/?theme=classic");
     }
 }
