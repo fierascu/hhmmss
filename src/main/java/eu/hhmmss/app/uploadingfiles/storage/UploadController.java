@@ -363,7 +363,7 @@ public class UploadController {
 
     /**
      * Validates that the uploaded file size does not exceed the limit for its file type.
-     * XLSX files are limited to 128KB, ZIP files to 2MB.
+     * XLSX files are limited to 200KB, ZIP files to 2MB.
      *
      * @param file the uploaded file to validate
      * @throws FileSizeExceededException if the file exceeds its type-specific size limit
