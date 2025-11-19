@@ -77,7 +77,7 @@ public class UploadService {
 
             String originalFilename = Objects.requireNonNull(file.getOriginalFilename());
 
-            // Read file content once for validation and hashing (max 128KB per config)
+            // Read file content once for validation and hashing (max 200KB per config)
             byte[] fileContent = file.getBytes();
 
             // Validate file content matches extension (security check)

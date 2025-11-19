@@ -535,8 +535,8 @@ class UploadControllerTest {
 
     @Test
     void testHandleFileUploadWithOversizedXlsxFile() throws Exception {
-        // Create a file that exceeds 128KB limit
-        byte[] largeContent = new byte[132 * 1024]; // 132KB
+        // Create a file that exceeds 200KB limit
+        byte[] largeContent = new byte[205 * 1024]; // 205KB
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "large.xlsx",
@@ -551,7 +551,7 @@ class UploadControllerTest {
                 .andExpect(redirectedUrl("/"))
                 .andExpect(flash().attributeExists("errorMessage"))
                 .andExpect(flash().attribute("errorMessage", containsString("Excel file size")))
-                .andExpect(flash().attribute("errorMessage", containsString("exceeds the maximum limit of 128 KB")));
+                .andExpect(flash().attribute("errorMessage", containsString("exceeds the maximum limit of 200 KB")));
 
         // Store should never be called because validation fails first
         verify(uploadService, never()).store(any(), anyString());
@@ -583,7 +583,7 @@ class UploadControllerTest {
 
     @Test
     void testHandleFileUploadWithValidSizedXlsxFile() throws Exception {
-        // Create a file within 128KB limit
+        // Create a file within 200KB limit
         byte[] validContent = new byte[100 * 1024]; // 100KB
         MockMultipartFile file = new MockMultipartFile(
                 "file",

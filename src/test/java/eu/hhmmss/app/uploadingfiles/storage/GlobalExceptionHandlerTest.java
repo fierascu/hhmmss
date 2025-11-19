@@ -115,14 +115,14 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void testHandleFileSizeExceeded() throws IOException {
-        FileSizeExceededException exception = new FileSizeExceededException("Excel file size (200.00 KB) exceeds the maximum limit of 128 KB.");
+        FileSizeExceededException exception = new FileSizeExceededException("Excel file size (250.00 KB) exceeds the maximum limit of 200 KB.");
 
         when(request.getSession()).thenReturn(session);
         when(request.getContextPath()).thenReturn("");
 
         handler.handleFileSizeExceeded(exception, request, response);
 
-        verify(session).setAttribute("uploadError", "Excel file size (200.00 KB) exceeds the maximum limit of 128 KB.");
+        verify(session).setAttribute("uploadError", "Excel file size (250.00 KB) exceeds the maximum limit of 200 KB.");
         verify(response).sendRedirect("/");
     }
 
