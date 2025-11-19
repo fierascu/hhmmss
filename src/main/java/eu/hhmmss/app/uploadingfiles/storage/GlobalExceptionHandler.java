@@ -41,8 +41,12 @@ public class GlobalExceptionHandler {
         // Store error in session
         request.getSession().setAttribute("uploadError", exc.getMessage());
 
+        // Preserve theme parameter in redirect
+        String theme = request.getParameter("theme");
+        String redirectUrl = buildRedirectUrl(request.getContextPath(), theme);
+
         // Send redirect
-        response.sendRedirect(request.getContextPath() + "/");
+        response.sendRedirect(redirectUrl);
     }
 
     @ExceptionHandler(FileSizeExceededException.class)
@@ -54,8 +58,12 @@ public class GlobalExceptionHandler {
         // Store error in session
         request.getSession().setAttribute("uploadError", exc.getMessage());
 
+        // Preserve theme parameter in redirect
+        String theme = request.getParameter("theme");
+        String redirectUrl = buildRedirectUrl(request.getContextPath(), theme);
+
         // Send redirect
-        response.sendRedirect(request.getContextPath() + "/");
+        response.sendRedirect(redirectUrl);
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
@@ -67,8 +75,12 @@ public class GlobalExceptionHandler {
         // Store error in session
         request.getSession().setAttribute("uploadError", "File size exceeds the maximum limit of 2MB.");
 
+        // Preserve theme parameter in redirect
+        String theme = request.getParameter("theme");
+        String redirectUrl = buildRedirectUrl(request.getContextPath(), theme);
+
         // Send redirect
-        response.sendRedirect(request.getContextPath() + "/");
+        response.sendRedirect(redirectUrl);
     }
 
     @ExceptionHandler(StorageFileNotFoundException.class)
@@ -167,5 +179,22 @@ public class GlobalExceptionHandler {
         path = path.replaceAll("[A-Za-z0-9]{20,}", "[TOKEN]"); // Replace long alphanumeric strings
 
         return path;
+    }
+
+    /**
+     * Builds a redirect URL preserving the theme parameter if present.
+     *
+     * @param contextPath the servlet context path
+     * @param theme the theme parameter value (may be null)
+     * @return the redirect URL with theme parameter if applicable
+     */
+    private String buildRedirectUrl(String contextPath, String theme) {
+        if ("classic".equals(theme)) {
+            return contextPath + "/?theme=classic";
+        } else if ("terminal".equals(theme)) {
+            return contextPath + "/?theme=terminal";
+        } else {
+            return contextPath + "/"; // Default to ASCII
+        }
     }
 }

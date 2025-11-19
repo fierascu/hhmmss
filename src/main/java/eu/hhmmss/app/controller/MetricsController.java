@@ -26,8 +26,13 @@ public class MetricsController {
      * Display metrics page.
      */
     @GetMapping
-    public String showMetrics(Model model) {
+    public String showMetrics(@RequestParam(required = false) String theme,
+                              Model model) {
         try {
+            // Set theme (default is ascii, other options: terminal, classic)
+            String selectedTheme = eu.hhmmss.app.uploadingfiles.storage.UploadController.getSelectedTheme(theme);
+            model.addAttribute("theme", selectedTheme);
+
             // Calculate example time savings (for 1 conversion, 10 conversions, 100 conversions)
             TimeSavings oneConversion = timeSavingsService.calculateCumulativeSavings(1);
             TimeSavings tenConversions = timeSavingsService.calculateCumulativeSavings(10);

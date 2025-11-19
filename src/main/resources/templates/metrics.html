@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org"
-      th:replace="~{${theme == 'classic' ? 'layout-classic' : (theme == 'terminal' ? 'layout' : 'layout')} :: layout(title='Time Savings', content=~{::content})}">
+      th:replace="~{layout :: layout(title='Time Savings', content=~{::content})}">
 
 <th:block th:fragment="content">
     <div th:if="${error}" class="alert alert-error" style="margin-bottom: 1rem;">
