@@ -70,7 +70,7 @@ public class UploadController {
         model.addAttribute("files", uploadService.loadAll()
                 .map(path -> MvcUriComponentsBuilder.fromMethodName(
                                 UploadController.class, "serveFile",
-                                path.getFileName().toString())
+                                path.getFileName().toString(), (HttpSession) null)
                         .build().toUri().toString())
                 .toList());
 
@@ -92,8 +92,57 @@ public class UploadController {
 
         if (file == null) return ResponseEntity.notFound().build();
 
-        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
-                "attachment; filename=\"" + file.getFilename() + "\"").body(file);
+        // Determine content type based on file extension
+        String contentType = getContentType(filename);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getFilename() + "\"")
+                .header(HttpHeaders.CONTENT_TYPE, contentType)
+                .body(file);
+    }
+
+    /**
+     * Determines the MIME content type based on the file extension.
+     * This ensures mobile browsers save files with the correct extension.
+     *
+     * @param filename the filename to check
+     * @return the MIME content type
+     */
+    private String getContentType(String filename) {
+        if (filename == null) {
+            return "application/octet-stream";
+        }
+
+        String lowerFilename = filename.toLowerCase();
+
+        // Excel formats
+        if (lowerFilename.endsWith(".xlsx")) {
+            return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        } else if (lowerFilename.endsWith(".xlsm")) {
+            return "application/vnd.ms-excel.sheet.macroEnabled.12";
+        } else if (lowerFilename.endsWith(".xlsb")) {
+            return "application/vnd.ms-excel.sheet.binary.macroEnabled.12";
+        } else if (lowerFilename.endsWith(".xls")) {
+            return "application/vnd.ms-excel";
+        }
+        // Word formats
+        else if (lowerFilename.endsWith(".docx")) {
+            return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        } else if (lowerFilename.endsWith(".doc")) {
+            return "application/msword";
+        }
+        // PDF
+        else if (lowerFilename.endsWith(".pdf")) {
+            return "application/pdf";
+        }
+        // ZIP
+        else if (lowerFilename.endsWith(".zip")) {
+            return "application/zip";
+        }
+        // Default fallback
+        else {
+            return "application/octet-stream";
+        }
     }
 
     @PostMapping("/")
@@ -222,13 +271,13 @@ public class UploadController {
         // Build file URLs for download links
         java.util.List<String> generatedFileUrls = new java.util.ArrayList<>();
         generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
-                UploadController.class, "serveFile", uuidFilename).build().toUri().toString());
+                UploadController.class, "serveFile", uuidFilename, (HttpSession) null).build().toUri().toString());
         generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
-                UploadController.class, "serveFile", extractedFilename).build().toUri().toString());
+                UploadController.class, "serveFile", extractedFilename, (HttpSession) null).build().toUri().toString());
         generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
-                UploadController.class, "serveFile", xlsPdfFilename).build().toUri().toString());
+                UploadController.class, "serveFile", xlsPdfFilename, (HttpSession) null).build().toUri().toString());
         generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
-                UploadController.class, "serveFile", docPdfFilename).build().toUri().toString());
+                UploadController.class, "serveFile", docPdfFilename, (HttpSession) null).build().toUri().toString());
 
         // Pass data to the view
         redirectAttributes.addFlashAttribute("originalFilename", originalFilename);
@@ -288,9 +337,9 @@ public class UploadController {
         // Build file URLs for download links
         java.util.List<String> generatedFileUrls = new java.util.ArrayList<>();
         generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
-                UploadController.class, "serveFile", uuidFilename).build().toUri().toString());
+                UploadController.class, "serveFile", uuidFilename, (HttpSession) null).build().toUri().toString());
         generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
-                UploadController.class, "serveFile", result.resultZipFileName()).build().toUri().toString());
+                UploadController.class, "serveFile", result.resultZipFileName(), (HttpSession) null).build().toUri().toString());
 
         // Pass results to the view
         redirectAttributes.addFlashAttribute("originalFilename", originalFilename);
@@ -314,7 +363,7 @@ public class UploadController {
 
     /**
      * Validates that the uploaded file size does not exceed the limit for its file type.
-     * XLSX files are limited to 128KB, ZIP files to 2MB.
+     * XLSX files are limited to 200KB, ZIP files to 2MB.
      *
      * @param file the uploaded file to validate
      * @throws FileSizeExceededException if the file exceeds its type-specific size limit
@@ -407,7 +456,7 @@ public class UploadController {
             // Build file URLs for download links
             java.util.List<String> generatedFileUrls = new java.util.ArrayList<>();
             generatedFileUrls.add(MvcUriComponentsBuilder.fromMethodName(
-                    UploadController.class, "serveFile", filename).build().toUri().toString());
+                    UploadController.class, "serveFile", filename, (HttpSession) null).build().toUri().toString());
 
             // Pass data to the view
             redirectAttributes.addFlashAttribute("generatedFiles", generatedFiles);
