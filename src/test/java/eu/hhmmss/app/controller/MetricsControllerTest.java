@@ -40,9 +40,11 @@ class MetricsControllerTest {
 
         // Act & Assert
         mockMvc.perform(get("/metrics")
-                        .sessionAttr("theme", "terminal"))
+                        .param("theme", "terminal"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("metrics"))
+                .andExpect(model().attributeExists("theme"))
+                .andExpect(model().attribute("theme", "terminal"))
                 .andExpect(model().attributeExists("oneConversion"))
                 .andExpect(model().attributeExists("tenConversions"))
                 .andExpect(model().attributeExists("hundredConversions"));
@@ -91,9 +93,65 @@ class MetricsControllerTest {
 
         // Act & Assert
         mockMvc.perform(get("/metrics")
-                        .sessionAttr("theme", "terminal"))
+                        .param("theme", "terminal"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("metrics"))
                 .andExpect(model().attributeExists("error"));
+    }
+
+    @Test
+    void testShowMetrics_defaultsToAsciiTheme() throws Exception {
+        // Arrange
+        TimeSavings savings = TimeSavings.builder()
+                .numberOfConversions(1)
+                .timeSavedMinutes(14.0)
+                .build();
+
+        when(timeSavingsService.calculateCumulativeSavings(anyInt())).thenReturn(savings);
+
+        // Act & Assert - no theme parameter provided
+        mockMvc.perform(get("/metrics"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("metrics"))
+                .andExpect(model().attributeExists("theme"))
+                .andExpect(model().attribute("theme", "ascii"));
+    }
+
+    @Test
+    void testShowMetrics_handlesClassicTheme() throws Exception {
+        // Arrange
+        TimeSavings savings = TimeSavings.builder()
+                .numberOfConversions(1)
+                .timeSavedMinutes(14.0)
+                .build();
+
+        when(timeSavingsService.calculateCumulativeSavings(anyInt())).thenReturn(savings);
+
+        // Act & Assert
+        mockMvc.perform(get("/metrics")
+                        .param("theme", "classic"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("metrics"))
+                .andExpect(model().attributeExists("theme"))
+                .andExpect(model().attribute("theme", "classic"));
+    }
+
+    @Test
+    void testShowMetrics_handlesInvalidTheme() throws Exception {
+        // Arrange
+        TimeSavings savings = TimeSavings.builder()
+                .numberOfConversions(1)
+                .timeSavedMinutes(14.0)
+                .build();
+
+        when(timeSavingsService.calculateCumulativeSavings(anyInt())).thenReturn(savings);
+
+        // Act & Assert - invalid theme should default to ascii
+        mockMvc.perform(get("/metrics")
+                        .param("theme", "invalid"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("metrics"))
+                .andExpect(model().attributeExists("theme"))
+                .andExpect(model().attribute("theme", "ascii"));
     }
 }
