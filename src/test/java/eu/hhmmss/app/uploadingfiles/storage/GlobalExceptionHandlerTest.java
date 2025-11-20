@@ -7,10 +7,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.ModelAndView;
 
 import java.io.IOException;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class GlobalExceptionHandlerTest {
@@ -33,90 +36,82 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void testHandleMaxSizeException() throws IOException {
+    void testHandleMaxSizeException() {
         MaxUploadSizeExceededException exception = new MaxUploadSizeExceededException(128000);
 
-        when(request.getSession()).thenReturn(session);
-        when(request.getContextPath()).thenReturn("");
         when(request.getParameter("theme")).thenReturn(null);
 
-        handler.handleMaxSizeException(exception, request, response);
+        ModelAndView mav = handler.handleMaxSizeException(exception, request);
 
-        verify(session).setAttribute("uploadError", "File size exceeds the maximum limit of 2MB.");
-        verify(response).sendRedirect("/");
+        assertEquals("upload", mav.getViewName());
+        assertEquals("File size exceeds the maximum limit of 2MB.", mav.getModel().get("errorMessage"));
+        assertEquals("ascii", mav.getModel().get("theme"));
     }
 
     @Test
-    void testHandleMaxSizeExceptionWithContextPath() throws IOException {
+    void testHandleMaxSizeExceptionWithTerminalTheme() {
         MaxUploadSizeExceededException exception = new MaxUploadSizeExceededException(128000);
 
-        when(request.getSession()).thenReturn(session);
-        when(request.getContextPath()).thenReturn("/myapp");
-        when(request.getParameter("theme")).thenReturn(null);
-
-        handler.handleMaxSizeException(exception, request, response);
-
-        verify(session).setAttribute("uploadError", "File size exceeds the maximum limit of 2MB.");
-        verify(response).sendRedirect("/myapp/");
-    }
-
-    @Test
-    void testHandleMaxSizeExceptionSetsCorrectErrorMessage() throws IOException {
-        MaxUploadSizeExceededException exception = new MaxUploadSizeExceededException(200000);
-
-        when(request.getSession()).thenReturn(session);
-        when(request.getContextPath()).thenReturn("");
-        when(request.getParameter("theme")).thenReturn(null);
-
-        handler.handleMaxSizeException(exception, request, response);
-
-        // Verify the exact error message
-        verify(session).setAttribute(eq("uploadError"), eq("File size exceeds the maximum limit of 2MB."));
-    }
-
-    @Test
-    void testHandleMaxSizeExceptionCallsSessionAndResponse() throws IOException {
-        MaxUploadSizeExceededException exception = new MaxUploadSizeExceededException(128000);
-
-        when(request.getSession()).thenReturn(session);
-        when(request.getContextPath()).thenReturn("/app");
-        when(request.getParameter("theme")).thenReturn(null);
-
-        handler.handleMaxSizeException(exception, request, response);
-
-        // Verify that session.setAttribute is called exactly once
-        verify(session, times(1)).setAttribute(anyString(), anyString());
-
-        // Verify that response.sendRedirect is called exactly once
-        verify(response, times(1)).sendRedirect(anyString());
-    }
-
-    @Test
-    void testHandleMaxSizeExceptionPreservesTerminalTheme() throws IOException {
-        MaxUploadSizeExceededException exception = new MaxUploadSizeExceededException(128000);
-
-        when(request.getSession()).thenReturn(session);
-        when(request.getContextPath()).thenReturn("");
         when(request.getParameter("theme")).thenReturn("terminal");
 
-        handler.handleMaxSizeException(exception, request, response);
+        ModelAndView mav = handler.handleMaxSizeException(exception, request);
 
-        verify(session).setAttribute("uploadError", "File size exceeds the maximum limit of 2MB.");
-        verify(response).sendRedirect("/?theme=terminal");
+        assertEquals("upload", mav.getViewName());
+        assertEquals("File size exceeds the maximum limit of 2MB.", mav.getModel().get("errorMessage"));
+        assertEquals("terminal", mav.getModel().get("theme"));
     }
 
     @Test
-    void testHandleMaxSizeExceptionPreservesClassicTheme() throws IOException {
-        MaxUploadSizeExceededException exception = new MaxUploadSizeExceededException(128000);
+    void testHandleMaxSizeExceptionWithClassicTheme() {
+        MaxUploadSizeExceededException exception = new MaxUploadSizeExceededException(200000);
 
-        when(request.getSession()).thenReturn(session);
-        when(request.getContextPath()).thenReturn("");
         when(request.getParameter("theme")).thenReturn("classic");
 
-        handler.handleMaxSizeException(exception, request, response);
+        ModelAndView mav = handler.handleMaxSizeException(exception, request);
 
-        verify(session).setAttribute("uploadError", "File size exceeds the maximum limit of 2MB.");
-        verify(response).sendRedirect("/?theme=classic");
+        // Verify the exact error message and theme
+        assertEquals("upload", mav.getViewName());
+        assertEquals("File size exceeds the maximum limit of 2MB.", mav.getModel().get("errorMessage"));
+        assertEquals("classic", mav.getModel().get("theme"));
+    }
+
+    @Test
+    void testHandleMaxSizeExceptionReturnsCorrectStatus() {
+        MaxUploadSizeExceededException exception = new MaxUploadSizeExceededException(128000);
+
+        when(request.getParameter("theme")).thenReturn(null);
+
+        ModelAndView mav = handler.handleMaxSizeException(exception, request);
+
+        // Verify that the response status is OK (200) to prevent browser confusion
+        assertEquals(HttpStatus.OK, mav.getStatus());
+        assertEquals("upload", mav.getViewName());
+    }
+
+    @Test
+    void testHandleMaxSizeExceptionDefaultsToAsciiTheme() {
+        MaxUploadSizeExceededException exception = new MaxUploadSizeExceededException(128000);
+
+        when(request.getParameter("theme")).thenReturn(null);
+
+        ModelAndView mav = handler.handleMaxSizeException(exception, request);
+
+        assertEquals("upload", mav.getViewName());
+        assertEquals("ascii", mav.getModel().get("theme"));
+        assertEquals("File size exceeds the maximum limit of 2MB.", mav.getModel().get("errorMessage"));
+    }
+
+    @Test
+    void testHandleMaxSizeExceptionReturnsUploadView() {
+        MaxUploadSizeExceededException exception = new MaxUploadSizeExceededException(128000);
+
+        when(request.getParameter("theme")).thenReturn("terminal");
+
+        ModelAndView mav = handler.handleMaxSizeException(exception, request);
+
+        assertEquals("upload", mav.getViewName());
+        assertNotNull(mav.getModel().get("errorMessage"));
+        assertNotNull(mav.getModel().get("theme"));
     }
 
     @Test

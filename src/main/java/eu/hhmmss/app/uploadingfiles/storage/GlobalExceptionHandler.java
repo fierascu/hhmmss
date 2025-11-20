@@ -67,20 +67,23 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public void handleMaxSizeException(MaxUploadSizeExceededException exc,
-                                       HttpServletRequest request,
-                                       HttpServletResponse response) throws IOException {
-        log.info("Handling MaxUploadSizeExceededException");
+    public ModelAndView handleMaxSizeException(MaxUploadSizeExceededException exc,
+                                                HttpServletRequest request) {
+        log.warn("File upload rejected: size exceeds 2MB limit");
 
-        // Store error in session
-        request.getSession().setAttribute("uploadError", "File size exceeds the maximum limit of 2MB.");
-
-        // Preserve theme parameter in redirect
+        // Get theme parameter
         String theme = request.getParameter("theme");
-        String redirectUrl = buildRedirectUrl(request.getContextPath(), theme);
+        if (theme == null) {
+            theme = "ascii";
+        }
 
-        // Send redirect
-        response.sendRedirect(redirectUrl);
+        // Return to upload page with error message
+        ModelAndView mav = new ModelAndView("upload");
+        mav.addObject("errorMessage", "File size exceeds the maximum limit of 2MB.");
+        mav.addObject("theme", theme);
+        mav.setStatus(HttpStatus.OK); // Return 200 to prevent browser confusion
+
+        return mav;
     }
 
     @ExceptionHandler(StorageFileNotFoundException.class)

@@ -63,6 +63,19 @@
                              fileName.endsWith('.xlsb') ||
                              fileName.endsWith('.zip');
 
+            // Check file size (2MB = 2 * 1024 * 1024 bytes)
+            var maxSize = 2 * 1024 * 1024; // 2MB
+            var isValidSize = file.size <= maxSize;
+
+            if (isValidFile && !isValidSize) {
+                alert('[ERROR] File size exceeds the maximum limit of 2MB.\n\nYour file: ' +
+                      (file.size / (1024 * 1024)).toFixed(2) + ' MB\n' +
+                      'Maximum allowed: 2.00 MB');
+                this.value = ''; // Clear the file input
+                uploadButton.disabled = true;
+                return;
+            }
+
             uploadButton.disabled = !isValidFile;
         });
 
