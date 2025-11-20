@@ -1,0 +1,23 @@
+# Base image with LibreOffice pre-installed
+# This image can be built once and reused to speed up subsequent builds
+# Build with: docker build -f Dockerfile.libreoffice-base -t hhmmss-libreoffice-base:latest .
+
+FROM eclipse-temurin:21-jre-alpine
+
+# Install LibreOffice and fonts in a single layer
+# Using --no-cache keeps the image size minimal
+RUN apk add --no-cache \
+    libreoffice \
+    ttf-dejavu \
+    fontconfig && \
+    # Pre-create LibreOffice user profile to speed up first run
+    mkdir -p /tmp/.libreoffice && \
+    chmod 1777 /tmp/.libreoffice
+
+# Verify LibreOffice installation
+RUN soffice --headless --version
+
+# Label for image metadata
+LABEL maintainer="hhmmss-team" \
+      description="Base image with LibreOffice for hhmmss timesheet converter" \
+      version="1.0"
