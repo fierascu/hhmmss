@@ -76,15 +76,45 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void testHandleMaxSizeExceptionReturnsCorrectStatus() {
+    void testHandleMaxSizeExceptionReturnsCorrectStatusForBrowser() {
         MaxUploadSizeExceededException exception = new MaxUploadSizeExceededException(128000);
 
         when(request.getParameter("theme")).thenReturn(null);
+        when(request.getHeader("Accept")).thenReturn("text/html,application/xhtml+xml");
 
         ModelAndView mav = handler.handleMaxSizeException(exception, request);
 
-        // Verify that the response status is OK (200) to prevent browser confusion
+        // Verify that the response status is OK (200) for browsers to prevent confusion
         assertEquals(HttpStatus.OK, mav.getStatus());
+        assertEquals("upload", mav.getViewName());
+    }
+
+    @Test
+    void testHandleMaxSizeExceptionReturnsCorrectStatusForApiCall() {
+        MaxUploadSizeExceededException exception = new MaxUploadSizeExceededException(128000);
+
+        when(request.getParameter("theme")).thenReturn(null);
+        when(request.getHeader("Accept")).thenReturn("application/json");
+
+        ModelAndView mav = handler.handleMaxSizeException(exception, request);
+
+        // Verify that the response status is 413 (Payload Too Large) for API calls
+        assertEquals(HttpStatus.PAYLOAD_TOO_LARGE, mav.getStatus());
+        assertEquals("upload", mav.getViewName());
+        assertEquals("File size exceeds the maximum limit of 2MB.", mav.getModel().get("errorMessage"));
+    }
+
+    @Test
+    void testHandleMaxSizeExceptionDetectsPostmanCall() {
+        MaxUploadSizeExceededException exception = new MaxUploadSizeExceededException(128000);
+
+        when(request.getParameter("theme")).thenReturn(null);
+        when(request.getHeader("Accept")).thenReturn("*/*"); // Typical Postman/curl header
+
+        ModelAndView mav = handler.handleMaxSizeException(exception, request);
+
+        // Postman with */* should get 413 status
+        assertEquals(HttpStatus.PAYLOAD_TOO_LARGE, mav.getStatus());
         assertEquals("upload", mav.getViewName());
     }
 

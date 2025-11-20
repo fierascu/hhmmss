@@ -69,7 +69,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ModelAndView handleMaxSizeException(MaxUploadSizeExceededException exc,
                                                 HttpServletRequest request) {
-        log.warn("File upload rejected: size exceeds 2MB limit");
+        log.warn("File upload rejected: size exceeds 2MB limit - Remote: {}",
+                 request.getRemoteAddr());
+
+        // Check if request accepts HTML (browser) or is API call
+        String acceptHeader = request.getHeader("Accept");
+        boolean isApiCall = acceptHeader != null &&
+                           (acceptHeader.contains("application/json") ||
+                            acceptHeader.contains("*/*") && !acceptHeader.contains("text/html"));
+
+        // For API calls (Postman, curl, etc.), return error page with 413 status
+        // For browser calls, return 200 with error page to prevent browser confusion
+        HttpStatus status = isApiCall ? HttpStatus.PAYLOAD_TOO_LARGE : HttpStatus.OK;
 
         // Get theme parameter
         String theme = request.getParameter("theme");
@@ -81,7 +92,7 @@ public class GlobalExceptionHandler {
         ModelAndView mav = new ModelAndView("upload");
         mav.addObject("errorMessage", "File size exceeds the maximum limit of 2MB.");
         mav.addObject("theme", theme);
-        mav.setStatus(HttpStatus.OK); // Return 200 to prevent browser confusion
+        mav.setStatus(status);
 
         return mav;
     }

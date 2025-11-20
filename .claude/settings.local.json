@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvnw.cmd test:*)",
+      "Bash(cat:*)",
+      "Bash(./mvnw compile:*)",
+      "Bash(./mvnw clean test:*)",
+      "Bash(find:*)",
+      "Bash(./mvnw test:*)",
+      "Bash(Select-String -Pattern \"(Tests run:|BUILD SUCCESS|BUILD FAILURE|Failures:|Errors:)\" -Context 0,2)",
+      "Bash(.\\mvnw.cmd clean compile:*)",
+      "Bash(mvnw.cmd clean compile:*)",
+      "Bash(./mvnw clean:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(gh pr view:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)",
+      "Bash(git push:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
