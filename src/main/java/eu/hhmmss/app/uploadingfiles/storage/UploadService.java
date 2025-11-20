@@ -105,6 +105,11 @@ public class UploadService {
             String sessionPrefix = sanitizeSessionId(sessionId);
             String secureFilename = sessionPrefix + "_" + secureRandomUuid + "-" + fileHash + fileExtension;
 
+            // Defense-in-depth: Prevent path traversal or invalid names
+            if (secureFilename.contains("..") || secureFilename.contains("/") || secureFilename.contains("\\")) {
+                throw new StorageException("Invalid filename");
+            }
+
             Path destinationFile = this.rootLocation.resolve(Paths.get(secureFilename))
                     .normalize().toAbsolutePath();
             if (!destinationFile.getParent().equals(this.rootLocation.toAbsolutePath())) {
