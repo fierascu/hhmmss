@@ -10,6 +10,7 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.io.IOException;
 
@@ -243,5 +244,70 @@ class GlobalExceptionHandlerTest {
 
         verify(session).setAttribute("uploadError", "File too large");
         verify(response).sendRedirect("/?theme=classic");
+    }
+
+    @Test
+    void testHandleNoResourceFoundWithoutTheme() throws IOException {
+        NoResourceFoundException exception = mock(NoResourceFoundException.class);
+
+        when(request.getContextPath()).thenReturn("");
+        when(request.getParameter("theme")).thenReturn(null);
+        when(request.getRequestURI()).thenReturn("/;jsessionid=ABC123");
+
+        handler.handleNoResourceFound(exception, request, response);
+
+        verify(response).sendRedirect("/");
+    }
+
+    @Test
+    void testHandleNoResourceFoundWithTerminalTheme() throws IOException {
+        NoResourceFoundException exception = mock(NoResourceFoundException.class);
+
+        when(request.getContextPath()).thenReturn("");
+        when(request.getParameter("theme")).thenReturn("terminal");
+        when(request.getRequestURI()).thenReturn("/;jsessionid=ABC123");
+
+        handler.handleNoResourceFound(exception, request, response);
+
+        verify(response).sendRedirect("/?theme=terminal");
+    }
+
+    @Test
+    void testHandleNoResourceFoundWithClassicTheme() throws IOException {
+        NoResourceFoundException exception = mock(NoResourceFoundException.class);
+
+        when(request.getContextPath()).thenReturn("");
+        when(request.getParameter("theme")).thenReturn("classic");
+        when(request.getRequestURI()).thenReturn("/;jsessionid=ABC123");
+
+        handler.handleNoResourceFound(exception, request, response);
+
+        verify(response).sendRedirect("/?theme=classic");
+    }
+
+    @Test
+    void testHandleNoResourceFoundWithContextPath() throws IOException {
+        NoResourceFoundException exception = mock(NoResourceFoundException.class);
+
+        when(request.getContextPath()).thenReturn("/myapp");
+        when(request.getParameter("theme")).thenReturn(null);
+        when(request.getRequestURI()).thenReturn("/myapp/;jsessionid=ABC123");
+
+        handler.handleNoResourceFound(exception, request, response);
+
+        verify(response).sendRedirect("/myapp/");
+    }
+
+    @Test
+    void testHandleNoResourceFoundWithContextPathAndTheme() throws IOException {
+        NoResourceFoundException exception = mock(NoResourceFoundException.class);
+
+        when(request.getContextPath()).thenReturn("/app");
+        when(request.getParameter("theme")).thenReturn("terminal");
+        when(request.getRequestURI()).thenReturn("/app/;jsessionid=XYZ789");
+
+        handler.handleNoResourceFound(exception, request, response);
+
+        verify(response).sendRedirect("/app/?theme=terminal");
     }
 }
