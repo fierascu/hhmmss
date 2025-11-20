@@ -67,20 +67,34 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public void handleMaxSizeException(MaxUploadSizeExceededException exc,
-                                       HttpServletRequest request,
-                                       HttpServletResponse response) throws IOException {
-        log.info("Handling MaxUploadSizeExceededException");
+    public ModelAndView handleMaxSizeException(MaxUploadSizeExceededException exc,
+                                                HttpServletRequest request) {
+        log.warn("File upload rejected: size exceeds 2MB limit - Remote: {}",
+                 request.getRemoteAddr());
 
-        // Store error in session
-        request.getSession().setAttribute("uploadError", "File size exceeds the maximum limit of 2MB.");
+        // Check if request accepts HTML (browser) or is API call
+        String acceptHeader = request.getHeader("Accept");
+        boolean isApiCall = acceptHeader != null &&
+                           (acceptHeader.contains("application/json") ||
+                            acceptHeader.contains("*/*") && !acceptHeader.contains("text/html"));
 
-        // Preserve theme parameter in redirect
+        // For API calls (Postman, curl, etc.), return error page with 413 status
+        // For browser calls, return 200 with error page to prevent browser confusion
+        HttpStatus status = isApiCall ? HttpStatus.PAYLOAD_TOO_LARGE : HttpStatus.OK;
+
+        // Get theme parameter
         String theme = request.getParameter("theme");
-        String redirectUrl = buildRedirectUrl(request.getContextPath(), theme);
+        if (theme == null) {
+            theme = "ascii";
+        }
 
-        // Send redirect
-        response.sendRedirect(redirectUrl);
+        // Return to upload page with error message
+        ModelAndView mav = new ModelAndView("upload");
+        mav.addObject("errorMessage", "File size exceeds the maximum limit of 2MB.");
+        mav.addObject("theme", theme);
+        mav.setStatus(status);
+
+        return mav;
     }
 
     @ExceptionHandler(StorageFileNotFoundException.class)
