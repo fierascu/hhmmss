@@ -1,7 +1,7 @@
 # Multi-stage build for Spring Boot application
 
 # Stage 1: Build the application
-FROM maven:3.9-eclipse-temurin-21-alpine AS builder
+FROM maven:3.9-eclipse-temurin-26-alpine AS builder
 
 WORKDIR /build
 
@@ -19,7 +19,7 @@ COPY src/ ./src/
 RUN ./mvnw clean package -DskipTests -B
 
 # Stage 2: Runtime image
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:26-jre-alpine
 
 # Install LibreOffice for PDF conversion via JodConverter
 RUN apk add --no-cache \
