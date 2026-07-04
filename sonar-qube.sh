@@ -21,10 +21,15 @@ done
 
 # Run the scan, blocking on the quality gate
 mvn clean verify sonar:sonar \
-  -Dsonar.projectKey=my-app \
+  -Dsonar.projectKey=hhmmss \
   -Dsonar.host.url=http://localhost:9000 \
   -Dsonar.token="$SONAR_TOKEN" \
   -Dsonar.qualitygate.wait=true
 
 # Shut it down (graceful)
 docker stop sonarqube
+
+# Notes
+# Sonar Web UI with initial user/pass: admin/admin
+# 1. Password required to change at first login
+# 2. Generate a sonar token that will be used here for scanning
