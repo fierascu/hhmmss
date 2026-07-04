@@ -19,7 +19,10 @@
       "Bash(git checkout:*)",
       "Bash(git merge:*)",
       "Bash(git stash:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(./mvnw cyclonedx:makeAggregateBom:*)",
+      "Bash(mvnw.cmd cyclonedx:makeAggregateBom:*)",
+      "Bash(cmd.exe /c \"where mvn\")"
     ],
     "deny": [],
     "ask": []

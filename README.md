@@ -280,6 +280,8 @@ fly open
 5. **UI Modernization**: Upgraded to modern, responsive Thymeleaf templates
 6. **Batch Processing**: Added ZIP file support for bulk conversions
 7. **Test Coverage**: Comprehensive unit tests for all core services and utilities
+8. **SonarQube**: Added and run it, found only false positives
+9. **CycloneDX SBOM**: Added it to track open-source licenses, risks from software supply chain
 
 ### Recent Enhancements
 
@@ -322,7 +324,7 @@ Test coverage includes edge cases, error scenarios, and security validations.
 - **Automatic Cleanup**: Removes temporary files after configurable retention period
 - **File Integrity**: SHA-256 hashing for upload verification
 
-## Future Enhancements
+## Possible Future Enhancements
 
 - Enhanced template customization options
 - User authentication and multi-tenancy

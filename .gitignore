@@ -35,3 +35,7 @@ build/
 ### VS Code ###
 .vscode/
 src/test/resources/timesheet-out-generated.docx
+
+### SBOM files ###
+bom.json
+bom.xml
