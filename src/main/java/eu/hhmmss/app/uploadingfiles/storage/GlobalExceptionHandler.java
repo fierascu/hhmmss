@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -137,6 +138,21 @@ public class GlobalExceptionHandler {
         mav.setStatus(HttpStatus.INTERNAL_SERVER_ERROR);
 
         return mav;
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public void handleNoResourceFound(NoResourceFoundException exc,
+                                      HttpServletRequest request,
+                                      HttpServletResponse response) throws IOException {
+        // Log the event at debug level (this is expected behavior for jsessionid URLs)
+        log.debug("NoResourceFoundException: {} - Path: {}", exc.getMessage(), request.getRequestURI());
+
+        // Preserve theme parameter in redirect
+        String theme = request.getParameter("theme");
+        String redirectUrl = buildRedirectUrl(request.getContextPath(), theme);
+
+        // Send redirect to home page with theme preserved
+        response.sendRedirect(redirectUrl);
     }
 
     @ExceptionHandler(Exception.class)
