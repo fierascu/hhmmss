@@ -2,7 +2,7 @@ services:
   hhmmss-app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: springboot-app/Dockerfile
     image: hhmmss:latest
     container_name: hhmmss-timesheet-converter
     ports:

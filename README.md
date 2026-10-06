@@ -180,14 +180,15 @@ git clone https://github.com/fierascu/hhmmss.git
 cd hhmmss
 ```
 
-2. Build the project:
+2. Build the project (this is now a multi-module reactor: `core` holds the
+   framework-agnostic conversion logic, `springboot-app` is the Spring Boot app):
 ```bash
 mvn clean install
 ```
 
 3. Run the application:
 ```bash
-mvn spring-boot:run
+mvn -pl springboot-app spring-boot:run
 ```
 
 4. Open your browser and navigate to:
@@ -197,7 +198,7 @@ http://localhost:8080
 
 ### Running Tests
 
-Execute the comprehensive test suite:
+Execute the comprehensive test suite (all modules):
 ```bash
 mvn test
 ```
